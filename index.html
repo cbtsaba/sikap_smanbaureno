@@ -4,22 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SIKAP — Sistem Ketidakhadiran &amp; Pelanggaran Siswa</title>
-<script>
-    const firebaseConfig = {
-    apiKey: "AIzaSyDelBBrABBvttz_Am7MRUs-FcsI-aQgnJk",
-    authDomain: "sikap-sekolah.firebaseapp.com",
-    databaseURL: "https://sikap-sekolah-default-rtdb.firebaseio.com",
-    projectId: "sikap-sekolah",
-    storageBucket: "sikap-sekolah.firebasestorage.app",
-    messagingSenderId: "680199533235",
-    appId: "1:680199533235:web:5a41ef09706568b16e76c6"
-  };
-</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root{
   --navy-950:#0a1f38;
@@ -96,7 +87,7 @@ a{color:var(--navy-700);}
   position:relative;
 }
 .seal{
-  width:78px;height:78px;border-radius:50%;
+  width:84px;height:84px;border-radius:50%;
   border:2px solid var(--gold-500);
   display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.04);
@@ -104,10 +95,10 @@ a{color:var(--navy-700);}
   flex-shrink:0;
 }
 .seal img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.seal-fallback{font-family:'Lora',serif;font-weight:700;font-size:26px;color:var(--gold-500);}
-.login-side .top{display:flex;gap:16px;align-items:center;}
-.login-side .school-name{font-size:14px;font-weight:600;letter-spacing:.02em;color:#cdd7ea;}
-.login-side .app-title{font-size:30px;line-height:1.15;margin:22px 0 10px;font-weight:600;}
+.seal-fallback{font-family:'Lora',serif;font-weight:700;font-size:28px;color:var(--gold-500);}
+.login-side .brand-center{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;}
+.login-side .school-name{font-family:'Lora',serif;font-size:21px;line-height:1.35;font-weight:700;letter-spacing:.01em;color:#fff;max-width:300px;}
+.login-side .app-title{font-size:28px;line-height:1.15;margin:22px 0 10px;font-weight:600;}
 .login-side .app-sub{color:#aeb9cf;font-size:13.5px;line-height:1.6;max-width:340px;}
 .login-side .tagline{font-size:12px;color:#7f8caa;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid rgba(255,255,255,.12);padding-top:16px;}
 .login-form-wrap{padding:44px 40px;display:flex;flex-direction:column;justify-content:center;}
@@ -122,6 +113,10 @@ a{color:var(--navy-700);}
 .field input:focus, .field select:focus, .field textarea:focus{
   outline:none;border-color:var(--navy-700);box-shadow:0 0 0 3px rgba(29,64,121,.12);background:#fff;
 }
+.pass-wrap{position:relative;}
+.pass-wrap input{padding-right:82px;}
+.pass-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--navy-700);font-size:12px;font-weight:700;padding:6px 8px;letter-spacing:.02em;}
+.pass-toggle:hover{text-decoration:underline;}
 .role-toggle{display:flex;gap:8px;margin-bottom:18px;background:#f0f2f7;padding:4px;border-radius:9px;}
 .role-toggle button{
   flex:1;padding:9px;border:none;border-radius:6px;background:transparent;font-weight:600;font-size:13px;color:var(--ink-soft);
@@ -200,6 +195,7 @@ a{color:var(--navy-700);}
 .stat .sub{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
 
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.toolbar select, .toolbar input[type=date]{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;}
 .toolbar .spacer{flex:1;}
 .btn{border:1px solid var(--border);background:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
 .btn:hover{background:#f4f6fb;}
@@ -221,7 +217,6 @@ tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:m
 tbody tr:hover{background:#fbfcff;}
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
 .table-wrap table{border:none;}
-.table-wrap .table-wrap{border:none;}
 .empty-row td{text-align:center;color:var(--ink-soft);padding:30px;font-size:13px;}
 
 .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
@@ -233,7 +228,6 @@ tbody tr:hover{background:#fbfcff;}
 
 .avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#e7edf6;flex-shrink:0;}
 .avatar-lg{width:72px;height:72px;border-radius:50%;object-fit:cover;background:#e7edf6;border:2px solid var(--border);}
-.nametd{display:flex;align-items:center;gap:9px;}
 
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px;}
 .tabbtn{padding:9px 16px;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px;}
@@ -247,7 +241,6 @@ tbody tr:hover{background:#fbfcff;}
 @media(max-width:900px){.form-grid{grid-template-columns:repeat(2,1fr);}}
 .form-actions{display:flex;gap:8px;margin-top:14px;}
 .filebox{border:1.5px dashed var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--ink-soft);text-align:center;background:#fff;}
-.filebox.small{padding:6px;}
 .helptext{font-size:11.5px;color:#8792a8;margin-top:4px;}
 .section-title{font-family:'Lora',serif;font-size:16px;margin:26px 0 12px;padding-top:6px;border-top:1px solid var(--border);}
 .section-title:first-of-type{border-top:none;margin-top:0;}
@@ -265,18 +258,31 @@ tbody tr:hover{background:#fbfcff;}
 .modal p{color:var(--ink-soft);font-size:13.5px;line-height:1.6;}
 .modal .form-actions{justify-content:flex-end;}
 
-.wa-msg-preview{background:var(--green-100);border:1px solid #bfe3c8;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#245a34;white-space:pre-wrap;margin-top:8px;}
 .check-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;}
 .kpoint{font-weight:700;}
 
+/* ---------- DB CONNECTION OVERLAY ---------- */
+#dbOverlay{
+  position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  background:linear-gradient(160deg,var(--navy-950),var(--navy-900) 55%,var(--navy-800));color:#fff;text-align:center;padding:24px;
+}
+#dbOverlay .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold-500);border-radius:50%;animation:dbspin .8s linear infinite;}
+@keyframes dbspin{to{transform:rotate(360deg);}}
+#dbOverlay .msg{font-size:13.5px;color:#cdd7ea;max-width:340px;line-height:1.6;}
+#dbOverlay .err-box{display:none;flex-direction:column;align-items:center;gap:12px;}
+#dbOverlay.error .spinner, #dbOverlay.error .msg-loading{display:none;}
+#dbOverlay.error .err-box{display:flex;}
+#dbOverlay .retry-btn{border:none;background:var(--gold-500);color:var(--navy-950);font-weight:700;padding:9px 20px;border-radius:8px;font-size:13px;}
+#dbOverlay .retry-btn:hover{background:var(--gold-600);color:#fff;}
+
+/* ---------- PRINT ---------- */
+#printArea{display:none;}
 @media print{
   body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
-  #printArea{position:absolute;left:0;top:0;width:100%;padding:20px;}
+  #printArea{display:block !important;visibility:visible;position:absolute;left:0;top:0;width:100%;padding:20px;}
+  #printArea *{visibility:visible;}
   .no-print{display:none !important;}
 }
-.print-header{display:none;}
-#printArea{}
 
 @media(max-width:880px){
   .shell{grid-template-columns:1fr;}
@@ -289,15 +295,23 @@ tbody tr:hover{background:#fbfcff;}
 </head>
 <body>
 
+<!-- ============ FIREBASE CONNECTION OVERLAY ============ -->
+<div id="dbOverlay">
+  <div class="spinner"></div>
+  <div class="msg msg-loading">Menghubungkan ke database SIKAP...</div>
+  <div class="err-box">
+    <div class="msg">⚠️ Gagal terhubung ke database. Periksa koneksi internet Anda, lalu coba lagi.</div>
+    <button class="retry-btn" onclick="location.reload()">Coba Lagi</button>
+  </div>
+</div>
+
 <!-- ============ LOGIN PAGE ============ -->
 <div id="loginPage">
   <div class="login-card">
     <div class="login-side">
-      <div class="top">
+      <div class="brand-center">
         <div class="seal" id="loginSeal"><span class="seal-fallback">SK</span></div>
-        <div>
-          <div class="school-name" id="loginSchoolName">Nama Sekolah Belum Diatur</div>
-        </div>
+        <div class="school-name" id="loginSchoolName">Nama Sekolah Belum Diatur</div>
       </div>
       <div>
         <div class="app-title">SIKAP<br>Sistem Ketidakhadiran &amp; Pelanggaran Siswa</div>
@@ -320,7 +334,10 @@ tbody tr:hover{background:#fbfcff;}
         </div>
         <div class="field">
           <label>Kata Sandi</label>
-          <input type="password" id="loginPassword" autocomplete="current-password" required>
+          <div class="pass-wrap">
+            <input type="password" id="loginPassword" autocomplete="current-password" required>
+            <button type="button" class="pass-toggle" id="togglePassBtn" onclick="togglePasswordVisibility()">Tampilkan</button>
+          </div>
         </div>
         <div class="field">
           <label>Verifikasi Keamanan (Captcha)</label>
@@ -410,7 +427,7 @@ tbody tr:hover{background:#fbfcff;}
 
     <!-- TAHUN AJARAN -->
     <section class="page" id="page-tahun">
-      <div class="topbar"><div><h1>Tahun Pelajaran &amp; Semester</h1><div class="desc">Kelola periode akademik. Periode aktif digunakan sebagai default input data.</div></div></div>
+      <div class="topbar"><div><h1>Tahun Pelajaran &amp; Semester</h1><div class="desc">Kelola periode akademik. Periode aktif digunakan sebagai default input data dan header laporan.</div></div></div>
       <div class="card">
         <div class="form-panel">
           <h4 id="taFormTitle">Tambah Tahun Pelajaran</h4>
@@ -428,26 +445,9 @@ tbody tr:hover{background:#fbfcff;}
       </div>
     </section>
 
-    <!-- ROMBEL -->
-    <section class="page" id="page-rombel">
-      <div class="topbar"><div><h1>Rombongan Belajar &amp; Wali Kelas</h1><div class="desc">Kelola data kelas dan penetapan wali kelas.</div></div></div>
-      <div class="card">
-        <div class="form-panel">
-          <h4 id="rbFormTitle">Tambah Rombel</h4>
-          <div class="form-grid">
-            <div class="field"><label>Nama Rombel</label><input id="rb_nama" placeholder="Contoh: VII-A"></div>
-            <div class="field"><label>Tingkat</label><input id="rb_tingkat" placeholder="Contoh: VII"></div>
-            <div class="field"><label>Wali Kelas</label><select id="rb_wali"></select></div>
-          </div>
-          <div class="form-actions"><button class="btn btn-dark" onclick="saveRombel()">Simpan</button><button class="btn" onclick="resetRbForm()">Batal</button></div>
-        </div>
-        <div class="table-wrap"><table><thead><tr><th>Rombel</th><th>Tingkat</th><th>Wali Kelas</th><th>Jml Siswa</th><th></th></tr></thead><tbody id="rbTable"></tbody></table></div>
-      </div>
-    </section>
-
-    <!-- GURU -->
+    <!-- GURU (dipindah ke urutan pertama Data Induk) -->
     <section class="page" id="page-guru">
-      <div class="topbar"><div><h1>Data Guru &amp; Wali Kelas</h1><div class="desc">Kelola data guru, termasuk foto dan nomor WhatsApp.</div></div></div>
+      <div class="topbar"><div><h1>Data Guru &amp; Wali Kelas</h1><div class="desc">Kelola data guru, termasuk foto dan nomor WhatsApp. Data guru diisi terlebih dahulu agar dapat dipilih sebagai wali kelas.</div></div></div>
       <div class="card">
         <div class="tabs">
           <button class="tabbtn active" onclick="switchTab('guru','input')">Input Manual</button>
@@ -477,7 +477,24 @@ tbody tr:hover{background:#fbfcff;}
       </div>
     </section>
 
-    <!-- SISWA -->
+    <!-- ROMBEL (dipindah ke urutan kedua Data Induk) -->
+    <section class="page" id="page-rombel">
+      <div class="topbar"><div><h1>Rombongan Belajar &amp; Wali Kelas</h1><div class="desc">Kelola data kelas dan penetapan wali kelas.</div></div></div>
+      <div class="card">
+        <div class="form-panel">
+          <h4 id="rbFormTitle">Tambah Rombel</h4>
+          <div class="form-grid">
+            <div class="field"><label>Nama Rombel</label><input id="rb_nama" placeholder="Contoh: VII-A"></div>
+            <div class="field"><label>Tingkat</label><input id="rb_tingkat" placeholder="Contoh: VII"></div>
+            <div class="field"><label>Wali Kelas</label><select id="rb_wali"></select></div>
+          </div>
+          <div class="form-actions"><button class="btn btn-dark" onclick="saveRombel()">Simpan</button><button class="btn" onclick="resetRbForm()">Batal</button></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Rombel</th><th>Tingkat</th><th>Wali Kelas</th><th>Jml Siswa</th><th></th></tr></thead><tbody id="rbTable"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- SISWA (urutan ketiga Data Induk) -->
     <section class="page" id="page-siswa">
       <div class="topbar"><div><h1>Data Siswa</h1><div class="desc">Kelola data induk siswa, termasuk foto dan kontak WhatsApp orang tua/wali.</div></div></div>
       <div class="card">
@@ -508,8 +525,8 @@ tbody tr:hover{background:#fbfcff;}
           <div class="form-actions"><button class="btn btn-dark" onclick="importSiswaCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('sv_csv').value=''">Bersihkan</button></div>
         </div>
         <div class="toolbar" style="margin-top:14px;">
-          <input id="svSearch" placeholder="Cari nama / NIS..." style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;min-width:220px;" oninput="renderSiswaTable()">
-          <select id="svFilterRombel" onchange="renderSiswaTable()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;"><option value="">Semua Rombel</option></select>
+          <input id="svSearch" placeholder="Cari nama / NIS..." style="min-width:220px;" oninput="renderSiswaTable()">
+          <select id="svFilterRombel" onchange="renderSiswaTable()"><option value="">Semua Rombel</option></select>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Foto</th><th>NIS</th><th>Nama</th><th>JK</th><th>Rombel</th><th>WA Ortu</th><th></th></tr></thead><tbody id="svTable"></tbody></table></div>
       </div>
@@ -517,17 +534,18 @@ tbody tr:hover{background:#fbfcff;}
 
     <!-- KODE ABSEN -->
     <section class="page" id="page-kodeabsen">
-      <div class="topbar"><div><h1>Master Kode Ketidakhadiran</h1><div class="desc">Kode dan keterangan status kehadiran (Sakit, Izin, Alpa, dsb).</div></div></div>
+      <div class="topbar"><div><h1>Master Kode Ketidakhadiran</h1><div class="desc">Kode, keterangan, dan bobot poin status kehadiran (Sakit, Izin, Alpa, dsb).</div></div></div>
       <div class="card">
         <div class="form-panel">
           <h4 id="kaFormTitle">Tambah Kode</h4>
           <div class="form-grid">
             <div class="field"><label>Kode</label><input id="ka_kode" placeholder="S"></div>
-            <div class="field" style="grid-column:span 2;"><label>Keterangan</label><input id="ka_ket" placeholder="Sakit"></div>
+            <div class="field"><label>Keterangan</label><input id="ka_ket" placeholder="Sakit"></div>
+            <div class="field"><label>Poin</label><input id="ka_poin" type="number" value="0"></div>
           </div>
           <div class="form-actions"><button class="btn btn-dark" onclick="saveKodeAbsen()">Simpan</button><button class="btn" onclick="resetKaForm()">Batal</button></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Keterangan</th><th></th></tr></thead><tbody id="kaTable"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Kode</th><th>Keterangan</th><th>Poin</th><th></th></tr></thead><tbody id="kaTable"></tbody></table></div>
       </div>
     </section>
 
@@ -566,11 +584,10 @@ tbody tr:hover{background:#fbfcff;}
           <div class="form-actions"><button class="btn btn-dark" onclick="saveAbsensi()">💾 Simpan Ketidakhadiran</button></div>
         </div>
         <div class="toolbar">
-          <input type="date" id="abFilterDate" onchange="renderAbsensiTable()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;">
+          <input type="date" id="abFilterDate" onchange="renderAbsensiTable()">
           <button class="btn btn-sm" onclick="document.getElementById('abFilterDate').value='';renderAbsensiTable()">Tampilkan Semua</button>
-          <span class="spacer"></span>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Rombel</th><th>Status</th><th>Keterangan</th><th>WA</th><th></th></tr></thead><tbody id="abTable"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Rombel</th><th>Status</th><th>Poin</th><th>Keterangan</th><th>WA</th><th></th></tr></thead><tbody id="abTable"></tbody></table></div>
       </div>
     </section>
 
@@ -592,66 +609,39 @@ tbody tr:hover{background:#fbfcff;}
           <div class="form-actions"><button class="btn btn-dark" onclick="savePelanggaran()">💾 Simpan Pelanggaran</button></div>
         </div>
         <div class="toolbar">
-          <input type="date" id="plFilterDate" onchange="renderPelanggaranTable()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;">
+          <input type="date" id="plFilterDate" onchange="renderPelanggaranTable()">
           <button class="btn btn-sm" onclick="document.getElementById('plFilterDate').value='';renderPelanggaranTable()">Tampilkan Semua</button>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Rombel</th><th>Pelanggaran</th><th>Kategori</th><th>Poin</th><th>WA</th><th></th></tr></thead><tbody id="plTable"></tbody></table></div>
       </div>
     </section>
 
-    <!-- REKAP PERSONAL/KELOMPOK -->
-    <section class="page" id="page-rekappersonal">
-      <div class="topbar"><div><h1>Rekap Personal &amp; Kelompok</h1><div class="desc">Rekap ketidakhadiran dan pelanggaran per siswa atau per rombel.</div></div></div>
-      <div class="card">
-        <div class="tabs">
-          <button class="tabbtn active" onclick="switchTab('rp','personal')">Per Siswa (Personal)</button>
-          <button class="tabbtn" onclick="switchTab('rp','kelompok')">Per Rombel (Kelompok)</button>
-        </div>
-        <div class="tabpanel active" id="rp-personal">
-          <div class="toolbar">
-            <select id="rpp_siswa" style="min-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;"></select>
-            <input type="date" id="rpp_start"><span>s.d.</span><input type="date" id="rpp_end">
-            <button class="btn btn-dark btn-sm" onclick="renderRekapPersonal()">Tampilkan</button>
-          </div>
-          <div id="rpp_output"></div>
-        </div>
-        <div class="tabpanel" id="rp-kelompok">
-          <div class="toolbar">
-            <select id="rpk_rombel" style="min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;"></select>
-            <input type="date" id="rpk_start"><span>s.d.</span><input type="date" id="rpk_end">
-            <button class="btn btn-dark btn-sm" onclick="renderRekapKelompok()">Tampilkan</button>
-          </div>
-          <div class="toolbar no-print" id="rpk_exports" style="display:none;">
-            <button class="btn btn-sm" onclick="exportTableToExcel('rpk_table','Rekap_Kelompok')">📊 Excel</button>
-            <button class="btn btn-sm" onclick="exportTableToPDF('rpk_table','Rekap Kelompok')">📄 PDF</button>
-            <button class="btn btn-sm" onclick="printSection('rpk_wrap')">🖨️ Cetak</button>
-          </div>
-          <div id="rpk_output"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- REKAP WAKTU -->
-    <section class="page" id="page-rekapwaktu">
-      <div class="topbar"><div><h1>Rekap Berdasarkan Waktu</h1><div class="desc">Rekap harian, mingguan, bulanan, semester, atau rentang kustom.</div></div></div>
+    <!-- REKAP GABUNGAN (Personal / Kelas) -->
+    <section class="page" id="page-rekap">
+      <div class="topbar"><div><h1>Rekap Ketidakhadiran &amp; Pelanggaran</h1><div class="desc">Satu laporan gabungan — pilih rekap personal (per siswa) atau per kelas, lalu tentukan rentang waktu.</div></div></div>
       <div class="card">
         <div class="toolbar">
-          <select id="rw_periode" onchange="handlePeriodeChange()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;">
-            <option value="harian">Harian</option>
-            <option value="mingguan">Mingguan</option>
-            <option value="bulanan">Bulanan</option>
-            <option value="semester">Semester Aktif</option>
-            <option value="custom">Rentang Kustom</option>
+          <select id="rk_mode" onchange="handleRekapModeChange()" style="font-weight:600;">
+            <option value="personal">Rekap Personal (Per Siswa)</option>
+            <option value="kelas">Rekap Per Kelas (Rombel)</option>
           </select>
-          <input type="date" id="rw_start"><span id="rw_sd">s.d.</span><input type="date" id="rw_end">
-          <button class="btn btn-dark btn-sm" onclick="renderRekapWaktu()">Tampilkan</button>
+          <select id="rk_siswa" style="min-width:230px;"></select>
+          <select id="rk_rombel" style="min-width:200px;display:none;"></select>
         </div>
-        <div class="toolbar no-print" id="rw_exports" style="display:none;">
-          <button class="btn btn-sm" onclick="exportTableToExcel('rw_table','Rekap_Waktu')">📊 Excel</button>
-          <button class="btn btn-sm" onclick="exportTableToPDF('rw_table','Rekap Berdasarkan Waktu')">📄 PDF</button>
-          <button class="btn btn-sm" onclick="printSection('rw_wrap')">🖨️ Cetak</button>
+        <div class="toolbar">
+          <button class="btn btn-sm" onclick="setPeriodPreset('harian')">Hari Ini</button>
+          <button class="btn btn-sm" onclick="setPeriodPreset('mingguan')">Minggu Ini</button>
+          <button class="btn btn-sm" onclick="setPeriodPreset('bulanan')">Bulan Ini</button>
+          <button class="btn btn-sm" onclick="setPeriodPreset('semester')">Semester Aktif</button>
+          <input type="date" id="rk_start"><span>s.d.</span><input type="date" id="rk_end">
+          <button class="btn btn-dark btn-sm" onclick="renderRekap()">Tampilkan</button>
         </div>
-        <div id="rw_output"></div>
+        <div class="toolbar no-print" id="rk_exports" style="display:none;">
+          <button class="btn btn-sm" onclick="exportRekapExcel()">📊 Excel</button>
+          <button class="btn btn-sm" onclick="exportRekapPDF()">📄 PDF</button>
+          <button class="btn btn-sm" onclick="printRekap()">🖨️ Cetak</button>
+        </div>
+        <div id="rk_output"></div>
       </div>
     </section>
 
@@ -707,58 +697,146 @@ tbody tr:hover{background:#fbfcff;}
   </div>
 </div>
 
-<div id="printArea" style="display:none;"></div>
+<div id="printArea"></div>
 
 <script>
 /* =========================================================
-   DATABASE LAYER (localStorage)
+   DATABASE LAYER — Firebase Realtime Database
+   (Data disimpan online di Firebase, bukan lagi localStorage.
+   Sebuah cache lokal in-memory (dbCache) menyimpan salinan
+   terkini dari setiap koleksi agar seluruh kode UI yang sudah
+   ada — yang memanggil DB.get()/DB.set() secara sinkron —
+   tetap berjalan tanpa perlu diubah menjadi async/await.
+   dbCache selalu disinkronkan otomatis dengan Firebase melalui
+   listener real-time (on('value')), sehingga perubahan yang
+   dilakukan pengguna lain (mis. admin di perangkat lain) akan
+   ikut tampil secara otomatis. )
 ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDelBBrABBvttz_Am7MRUs-FcsI-aQgnJk",
+  authDomain: "sikap-sekolah.firebaseapp.com",
+  databaseURL: "https://sikap-sekolah-default-rtdb.firebaseio.com",
+  projectId: "sikap-sekolah",
+  storageBucket: "sikap-sekolah.firebasestorage.app",
+  messagingSenderId: "680199533235",
+  appId: "1:680199533235:web:5a41ef09706568b16e76c6"
+};
+const FB_ROOT = 'sikap_data';
+const DB_KEYS = ['profile','users','tahunAjaran','rombel','guru','siswa','kodeAbsen','kodePelanggaran','absensi','pelanggaran','waLog','waTpl'];
+
+let fbApp = null, fbDb = null;
+let dbCache = {};
+let dbReady = false;
+
 const DB = {
-  get(key, def){ try{ const v = localStorage.getItem('sikap_'+key); return v ? JSON.parse(v) : (def!==undefined?def:[]); }catch(e){ return def!==undefined?def:[]; } },
-  set(key, val){ localStorage.setItem('sikap_'+key, JSON.stringify(val)); }
+  get(key, def){
+    const v = dbCache[key];
+    return (v !== undefined && v !== null) ? v : (def!==undefined ? def : []);
+  },
+  set(key, val){
+    dbCache[key] = val; // optimistic local update -> UI tetap terasa instan
+    if(!fbDb){ return; }
+    fbDb.ref(FB_ROOT+'/'+key).set(val).catch(err=>{
+      console.error('Firebase write error:', err);
+      toast('Gagal menyimpan ke database online: '+err.message, 'err');
+    });
+  }
 };
 function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmtDate(d){ if(!d) return '-'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
 
 /* =========================================================
-   SEED DEFAULT DATA
+   SEED DEFAULT DATA (hanya ditulis sekali, saat database
+   online masih kosong / belum pernah diisi sama sekali)
 ========================================================= */
 function seedIfEmpty(){
-  if(!localStorage.getItem('sikap_seeded')){
-    DB.set('profile', {nama:'', npsn:'', alamat:'', email:'', telp:'', ig:'', fb:'', logo:''});
-    DB.set('users', [
-      {id:uid('u'), nama:'Administrator', username:'admin', password:'admin123', role:'admin'},
-      {id:uid('u'), nama:'Guru Piket 1', username:'user1', password:'user123', role:'user'}
-    ]);
-    DB.set('tahunAjaran', [{id:uid('ta'), tahun:'2025/2026', semester:'Ganjil', aktif:true}]);
-    DB.set('rombel', []);
-    DB.set('guru', []);
-    DB.set('siswa', []);
-    DB.set('kodeAbsen', [
-      {id:uid('ka'), kode:'S', ket:'Sakit'},
-      {id:uid('ka'), kode:'I', ket:'Izin'},
-      {id:uid('ka'), kode:'A', ket:'Alpa / Tanpa Keterangan'},
-      {id:uid('ka'), kode:'T', ket:'Terlambat'}
-    ]);
-    DB.set('kodePelanggaran', [
-      {id:uid('kp'), kode:'P01', nama:'Terlambat masuk sekolah', kategori:'Ringan', poin:5},
-      {id:uid('kp'), kode:'P02', nama:'Tidak mengerjakan tugas', kategori:'Ringan', poin:5},
-      {id:uid('kp'), kode:'P03', nama:'Atribut seragam tidak lengkap', kategori:'Ringan', poin:10},
-      {id:uid('kp'), kode:'P04', nama:'Membolos jam pelajaran', kategori:'Sedang', poin:25},
-      {id:uid('kp'), kode:'P05', nama:'Berkelahi dengan teman', kategori:'Berat', poin:75}
-    ]);
-    DB.set('absensi', []);
-    DB.set('pelanggaran', []);
-    DB.set('waLog', []);
-    DB.set('waTpl', {
-      absen:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan bahwa ananda tercatat {status} pada tanggal {tanggal}. Keterangan: {keterangan}. Terima kasih. - {sekolah}',
-      pel:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan ananda tercatat melakukan pelanggaran "{pelanggaran}" (kategori {kategori}, poin {poin}) pada tanggal {tanggal}. Mohon menjadi perhatian bersama. Terima kasih. - {sekolah}'
-    });
-    localStorage.setItem('sikap_seeded','1');
-  }
+  if(dbCache.users && dbCache.users.length){ return; } // sudah ada data, jangan timpa
+  DB.set('profile', dbCache.profile || {nama:'', npsn:'', alamat:'', email:'', telp:'', ig:'', fb:'', logo:''});
+  DB.set('users', [
+    {id:uid('u'), nama:'Administrator', username:'admin', password:'admin123', role:'admin'},
+    {id:uid('u'), nama:'Guru Piket 1', username:'user1', password:'user123', role:'user'}
+  ]);
+  DB.set('tahunAjaran', dbCache.tahunAjaran && dbCache.tahunAjaran.length ? dbCache.tahunAjaran : [{id:uid('ta'), tahun:'2025/2026', semester:'Ganjil', aktif:true}]);
+  DB.set('rombel', dbCache.rombel || []);
+  DB.set('guru', dbCache.guru || []);
+  DB.set('siswa', dbCache.siswa || []);
+  DB.set('kodeAbsen', dbCache.kodeAbsen && dbCache.kodeAbsen.length ? dbCache.kodeAbsen : [
+    {id:uid('ka'), kode:'S', ket:'Sakit', poin:0},
+    {id:uid('ka'), kode:'I', ket:'Izin', poin:0},
+    {id:uid('ka'), kode:'A', ket:'Alpa / Tanpa Keterangan', poin:10},
+    {id:uid('ka'), kode:'T', ket:'Terlambat', poin:2}
+  ]);
+  DB.set('kodePelanggaran', dbCache.kodePelanggaran && dbCache.kodePelanggaran.length ? dbCache.kodePelanggaran : [
+    {id:uid('kp'), kode:'P01', nama:'Terlambat masuk sekolah', kategori:'Ringan', poin:5},
+    {id:uid('kp'), kode:'P02', nama:'Tidak mengerjakan tugas', kategori:'Ringan', poin:5},
+    {id:uid('kp'), kode:'P03', nama:'Atribut seragam tidak lengkap', kategori:'Ringan', poin:10},
+    {id:uid('kp'), kode:'P04', nama:'Membolos jam pelajaran', kategori:'Sedang', poin:25},
+    {id:uid('kp'), kode:'P05', nama:'Berkelahi dengan teman', kategori:'Berat', poin:75}
+  ]);
+  DB.set('absensi', dbCache.absensi || []);
+  DB.set('pelanggaran', dbCache.pelanggaran || []);
+  DB.set('waLog', dbCache.waLog || []);
+  DB.set('waTpl', dbCache.waTpl || {
+    absen:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan bahwa ananda tercatat {status} pada tanggal {tanggal}. Keterangan: {keterangan}. Terima kasih. - {sekolah}',
+    pel:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan ananda tercatat melakukan pelanggaran "{pelanggaran}" (kategori {kategori}, poin {poin}) pada tanggal {tanggal}. Mohon menjadi perhatian bersama. Terima kasih. - {sekolah}'
+  });
 }
-seedIfEmpty();
+
+/* =========================================================
+   FIREBASE CONNECT + REALTIME SYNC
+========================================================= */
+function connectFirebase(){
+  try{
+    fbApp = firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+  }catch(err){
+    console.error(err);
+    showDbError();
+    return;
+  }
+  let pending = DB_KEYS.length;
+  let failed = false;
+  const timeoutId = setTimeout(()=>{ if(!dbReady) showDbError(); }, 15000);
+
+  DB_KEYS.forEach(key=>{
+    let firstLoad = true;
+    fbDb.ref(FB_ROOT+'/'+key).on('value', snap=>{
+      dbCache[key] = snap.val();
+      if(firstLoad){
+        firstLoad = false;
+        pending--;
+        if(pending===0 && !dbReady){
+          clearTimeout(timeoutId);
+          onDbFirstLoadComplete();
+        }
+      } else if(dbReady){
+        // Perubahan real-time dari sesi/perangkat lain
+        if(document.getElementById('appPage').style.display !== 'none'){
+          renderPageContent(currentPage);
+        } else {
+          refreshLoginBranding();
+        }
+      }
+    }, err=>{
+      console.error('Firebase read error:', err);
+      if(!failed){ failed = true; clearTimeout(timeoutId); showDbError(); }
+    });
+  });
+}
+function onDbFirstLoadComplete(){
+  seedIfEmpty();
+  dbReady = true;
+  document.getElementById('dbOverlay').style.display='none';
+  generateCaptcha();
+  refreshLoginBranding();
+  const sess = sessionStorage.getItem('sikap_session');
+  if(sess){ currentUser = JSON.parse(sess); enterApp(); }
+}
+function showDbError(){
+  document.getElementById('dbOverlay').classList.add('error');
+}
+connectFirebase();
 
 /* =========================================================
    AUTH / LOGIN
@@ -777,6 +855,12 @@ function generateCaptcha(){
   captchaAnswer = a+b;
   document.getElementById('captchaBox').textContent = a+' + '+b+' =';
   document.getElementById('captchaInput').value='';
+}
+function togglePasswordVisibility(){
+  const inp = document.getElementById('loginPassword');
+  const btn = document.getElementById('togglePassBtn');
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='Sembunyikan'; }
+  else { inp.type='password'; btn.textContent='Tampilkan'; }
 }
 function refreshLoginBranding(){
   const p = DB.get('profile', {});
@@ -825,16 +909,16 @@ function logout(){
 const NAV_ADMIN = [
   {group:'Utama', items:[['dashboard','🏠','Dasbor']]},
   {group:'Pengaturan', items:[['profil','🏫','Profil Sekolah'],['tahun','📅','Tahun Pelajaran'],['users','🔐','Manajemen Akun']]},
-  {group:'Data Induk', items:[['rombel','🏷️','Rombel & Wali Kelas'],['guru','👨‍🏫','Data Guru'],['siswa','🎓','Data Siswa']]},
+  {group:'Data Induk', items:[['guru','👨‍🏫','Data Guru'],['rombel','🏷️','Rombel & Wali Kelas'],['siswa','🎓','Data Siswa']]},
   {group:'Master Kode', items:[['kodeabsen','📋','Kode Ketidakhadiran'],['kodepelanggaran','⚠️','Kode Pelanggaran']]},
   {group:'Transaksi', items:[['inputabsensi','✅','Input Ketidakhadiran'],['inputpelanggaran','🚫','Input Pelanggaran']]},
-  {group:'Laporan', items:[['rekappersonal','📁','Rekap Personal/Kelompok'],['rekapwaktu','⏱️','Rekap Berdasarkan Waktu']]},
+  {group:'Laporan', items:[['rekap','📁','Rekap Ketidakhadiran & Pelanggaran']]},
   {group:'Lainnya', items:[['notifwa','💬','Notifikasi WhatsApp']]}
 ];
 const NAV_USER = [
   {group:'Utama', items:[['dashboard','🏠','Dasbor']]},
   {group:'Transaksi', items:[['inputabsensi','✅','Input Ketidakhadiran'],['inputpelanggaran','🚫','Input Pelanggaran']]},
-  {group:'Laporan', items:[['rekappersonal','📁','Rekap Personal/Kelompok'],['rekapwaktu','⏱️','Rekap Berdasarkan Waktu']]}
+  {group:'Laporan', items:[['rekap','📁','Rekap Ketidakhadiran & Pelanggaran']]}
 ];
 let currentPage = 'dashboard';
 function buildNav(){
@@ -873,8 +957,7 @@ function renderPageContent(pageId){
   if(pageId==='kodepelanggaran') renderKpTable();
   if(pageId==='inputabsensi') initInputAbsensi();
   if(pageId==='inputpelanggaran') initInputPelanggaran();
-  if(pageId==='rekappersonal') initRekapPersonal();
-  if(pageId==='rekapwaktu') initRekapWaktu();
+  if(pageId==='rekap') initRekap();
   if(pageId==='notifwa') { loadWaTemplates(); renderWaLog(); }
   if(pageId==='users') renderUsTable();
 }
@@ -1254,27 +1337,27 @@ function importSiswaCsv(){
 }
 
 /* =========================================================
-   KODE ABSEN
+   KODE ABSEN (dengan Poin)
 ========================================================= */
 let editKaId = null;
 function renderKaTable(){
   const list = DB.get('kodeAbsen', []);
   document.getElementById('kaTable').innerHTML = list.length ? list.map(k=>
-    '<tr><td><b>'+k.kode+'</b></td><td>'+k.ket+'</td><td><button class="btn btn-sm" onclick="editKa(\''+k.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deleteKa(\''+k.id+'\')">Hapus</button></td></tr>'
-  ).join('') : '<tr class="empty-row"><td colspan="3">Belum ada data</td></tr>';
+    '<tr><td><b>'+k.kode+'</b></td><td>'+k.ket+'</td><td class="kpoint">'+(k.poin||0)+'</td><td><button class="btn btn-sm" onclick="editKa(\''+k.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deleteKa(\''+k.id+'\')">Hapus</button></td></tr>'
+  ).join('') : '<tr class="empty-row"><td colspan="4">Belum ada data</td></tr>';
 }
 function saveKodeAbsen(){
-  const kode = val('ka_kode').toUpperCase(), ket = val('ka_ket');
+  const kode = val('ka_kode').toUpperCase(), ket = val('ka_ket'), poin = parseInt(val('ka_poin')||'0',10);
   if(!kode || !ket){ toast('Kode dan keterangan wajib diisi.','err'); return; }
   let list = DB.get('kodeAbsen', []);
-  if(editKaId){ list = list.map(k=> k.id===editKaId ? {...k, kode, ket} : k); }
-  else { list.push({id:uid('ka'), kode, ket}); }
+  if(editKaId){ list = list.map(k=> k.id===editKaId ? {...k, kode, ket, poin} : k); }
+  else { list.push({id:uid('ka'), kode, ket, poin}); }
   DB.set('kodeAbsen', list); resetKaForm(); renderKaTable();
   toast('Kode ketidakhadiran disimpan.','ok');
 }
 function editKa(id){
   const k = DB.get('kodeAbsen',[]).find(x=>x.id===id); if(!k) return;
-  editKaId=id; document.getElementById('ka_kode').value=k.kode; document.getElementById('ka_ket').value=k.ket;
+  editKaId=id; document.getElementById('ka_kode').value=k.kode; document.getElementById('ka_ket').value=k.ket; document.getElementById('ka_poin').value=k.poin||0;
   document.getElementById('kaFormTitle').textContent='Ubah Kode';
 }
 function deleteKa(id){
@@ -1282,7 +1365,7 @@ function deleteKa(id){
     DB.set('kodeAbsen', DB.get('kodeAbsen',[]).filter(k=>k.id!==id)); renderKaTable(); toast('Data dihapus.','ok');
   });
 }
-function resetKaForm(){ editKaId=null; document.getElementById('ka_kode').value=''; document.getElementById('ka_ket').value=''; document.getElementById('kaFormTitle').textContent='Tambah Kode'; }
+function resetKaForm(){ editKaId=null; document.getElementById('ka_kode').value=''; document.getElementById('ka_ket').value=''; document.getElementById('ka_poin').value='0'; document.getElementById('kaFormTitle').textContent='Tambah Kode'; }
 
 /* =========================================================
    KODE PELANGGARAN
@@ -1356,9 +1439,9 @@ function renderAbsensiTable(){
   const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
   document.getElementById('abTable').innerHTML = list.length ? list.map(a=>{
     const s = siswaMap[a.siswaId]; const r = s?rombelMap[s.rombelId]:null; const k = kaMap[a.kodeAbsenId];
-    return '<tr><td>'+fmtDate(a.tanggal)+'</td><td>'+(s?s.nama:'<i>dihapus</i>')+'</td><td>'+(r?r.nama:'-')+'</td><td>'+pillAbsen(k?k.kode:'-')+' '+(k?k.ket:'')+'</td><td>'+(a.ket||'-')+'</td><td>'+(a.waSent?'<span class="pill pill-green">Terkirim</span>':'<span class="pill pill-gray">-</span>')+'</td>'+
+    return '<tr><td>'+fmtDate(a.tanggal)+'</td><td>'+(s?s.nama:'<i>dihapus</i>')+'</td><td>'+(r?r.nama:'-')+'</td><td>'+pillAbsen(k?k.kode:'-')+' '+(k?k.ket:'')+'</td><td class="kpoint">'+(k?(k.poin||0):0)+'</td><td>'+(a.ket||'-')+'</td><td>'+(a.waSent?'<span class="pill pill-green">Terkirim</span>':'<span class="pill pill-gray">-</span>')+'</td>'+
     '<td><button class="btn btn-sm btn-red" onclick="deleteAbsensi(\''+a.id+'\')">Hapus</button></td></tr>';
-  }).join('') : '<tr class="empty-row"><td colspan="7">Belum ada data</td></tr>';
+  }).join('') : '<tr class="empty-row"><td colspan="8">Belum ada data</td></tr>';
 }
 function deleteAbsensi(id){
   confirmAction('Hapus Data Ketidakhadiran','Lanjutkan menghapus data ini?', ()=>{
@@ -1467,170 +1550,164 @@ function sendWaForPelanggaran(rec){
 }
 
 /* =========================================================
-   REKAP PERSONAL / KELOMPOK
+   REKAP GABUNGAN: PERSONAL / KELAS
 ========================================================= */
-function initRekapPersonal(){
-  const siswaSel = document.getElementById('rpp_siswa');
-  siswaSel.innerHTML = DB.get('siswa',[]).map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('');
-  const rombelSel = document.getElementById('rpk_rombel');
-  rombelSel.innerHTML = DB.get('rombel',[]).map(r=>'<option value="'+r.id+'">'+r.nama+'</option>').join('');
-  document.getElementById('rpp_output').innerHTML='';
-  document.getElementById('rpk_output').innerHTML='';
-  document.getElementById('rpk_exports').style.display='none';
+let rkMeta = {};
+function initRekap(){
+  document.getElementById('rk_mode').value='personal';
+  const siswaSel = document.getElementById('rk_siswa');
+  siswaSel.innerHTML = DB.get('siswa',[]).map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('') || '<option value="">— Belum ada siswa —</option>';
+  const rombelSel = document.getElementById('rk_rombel');
+  rombelSel.innerHTML = DB.get('rombel',[]).map(r=>'<option value="'+r.id+'">'+r.nama+'</option>').join('') || '<option value="">— Belum ada rombel —</option>';
+  handleRekapModeChange();
+  setPeriodPreset('bulanan');
+  document.getElementById('rk_output').innerHTML='';
+  document.getElementById('rk_exports').style.display='none';
+  rkMeta = {};
 }
-function switchTab(group, name){
-  document.querySelectorAll('#page-'+({rp:'rekappersonal',guru:'guru',siswa:'siswa'}[group]||group)+' .tabbtn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.querySelectorAll('#page-'+({rp:'rekappersonal',guru:'guru',siswa:'siswa'}[group]||group)+' .tabpanel').forEach(p=>p.classList.remove('active'));
-  document.getElementById(group+'-'+name).classList.add('active');
+function handleRekapModeChange(){
+  const mode = document.getElementById('rk_mode').value;
+  document.getElementById('rk_siswa').style.display = mode==='personal' ? '' : 'none';
+  document.getElementById('rk_rombel').style.display = mode==='kelas' ? '' : 'none';
 }
-function renderRekapPersonal(){
-  const siswaId = document.getElementById('rpp_siswa').value;
-  const start = document.getElementById('rpp_start').value, end = document.getElementById('rpp_end').value;
-  const s = DB.get('siswa',[]).find(x=>x.id===siswaId);
-  if(!s){ document.getElementById('rpp_output').innerHTML='<p class="helptext">Belum ada data siswa.</p>'; return; }
-  const inRange = t => (!start || t>=start) && (!end || t<=end);
-  const absensi = DB.get('absensi',[]).filter(a=>a.siswaId===siswaId && inRange(a.tanggal));
-  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>p.siswaId===siswaId && inRange(p.tanggal));
-  const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
-  const kpMap = Object.fromEntries(DB.get('kodePelanggaran',[]).map(k=>[k.id,k]));
-  const rombel = DB.get('rombel',[]).find(r=>r.id===s.rombelId);
-  const totalPoin = pelanggaran.reduce((sum,p)=>sum+(p.poin||0),0);
-  let html = '<div id="rpp_wrap">';
-  html += '<div class="card-tight" style="display:flex;gap:16px;align-items:center;background:#f8f9fc;border:1px solid var(--border);border-radius:10px;margin-bottom:16px;">';
-  html += '<img class="avatar-lg" src="'+(s.foto||fallbackAvatar())+'"><div><div style="font-weight:700;font-size:16px;">'+s.nama+'</div><div class="helptext">NIS '+(s.nis||'-')+' • '+(rombel?rombel.nama:'-')+'</div>';
-  html += '<div style="margin-top:6px;"><span class="pill pill-blue">Tidak Hadir: '+absensi.length+'</span> <span class="pill pill-red">Pelanggaran: '+pelanggaran.length+'</span> <span class="pill pill-amber">Total Poin: '+totalPoin+'</span></div></div></div>';
-  html += '<div class="toolbar no-print"><button class="btn btn-sm" onclick="exportTableToExcel(\'rpp_table\',\'Rekap_'+s.nama.replace(/\s/g,'_')+'\')">📊 Excel</button><button class="btn btn-sm" onclick="exportTableToPDF(\'rpp_table\',\'Rekap Personal - '+s.nama+'\')">📄 PDF</button><button class="btn btn-sm" onclick="printSection(\'rpp_wrap\')">🖨️ Cetak</button></div>';
-  html += '<table id="rpp_table"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
-  const rows = [
-    ...absensi.map(a=>({tanggal:a.tanggal, jenis:'Ketidakhadiran ('+(kaMap[a.kodeAbsenId]?kaMap[a.kodeAbsenId].ket:'-')+')', ket:a.ket||'-', poin:'-'})),
-    ...pelanggaran.map(p=>({tanggal:p.tanggal, jenis:'Pelanggaran ('+(kpMap[p.kodePelanggaranId]?kpMap[p.kodePelanggaranId].nama:'-')+')', ket:p.ket||'-', poin:p.poin}))
-  ].sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
-  html += rows.length ? rows.map(r=>'<tr><td>'+fmtDate(r.tanggal)+'</td><td>'+r.jenis+'</td><td>'+r.ket+'</td><td>'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="4">Tidak ada data pada periode ini</td></tr>';
-  html += '</tbody></table></div>';
-  document.getElementById('rpp_output').innerHTML = html;
-}
-function renderRekapKelompok(){
-  const rombelId = document.getElementById('rpk_rombel').value;
-  const start = document.getElementById('rpk_start').value, end = document.getElementById('rpk_end').value;
-  const rombel = DB.get('rombel',[]).find(r=>r.id===rombelId);
-  if(!rombel){ document.getElementById('rpk_output').innerHTML='<p class="helptext">Belum ada data rombel.</p>'; document.getElementById('rpk_exports').style.display='none'; return; }
-  const siswaList = DB.get('siswa',[]).filter(s=>s.rombelId===rombelId);
-  const inRange = t => (!start || t>=start) && (!end || t<=end);
-  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal));
-  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal));
-  const kaList = DB.get('kodeAbsen',[]);
-  let html = '<div id="rpk_wrap">';
-  html += '<table id="rpk_table"><thead><tr><th>NIS</th><th>Nama</th>'+kaList.map(k=>'<th>'+k.kode+'</th>').join('')+'<th>Jml Pelanggaran</th><th>Total Poin</th></tr></thead><tbody>';
-  html += siswaList.length ? siswaList.map(s=>{
-    const aList = absensi.filter(a=>a.siswaId===s.id);
-    const pList = pelanggaran.filter(p=>p.siswaId===s.id);
-    const totalPoin = pList.reduce((sum,p)=>sum+(p.poin||0),0);
-    const counts = kaList.map(k=> aList.filter(a=>a.kodeAbsenId===k.id).length);
-    return '<tr><td>'+(s.nis||'-')+'</td><td>'+s.nama+'</td>'+counts.map(c=>'<td>'+c+'</td>').join('')+'<td>'+pList.length+'</td><td class="kpoint">'+totalPoin+'</td></tr>';
-  }).join('') : '<tr class="empty-row"><td colspan="'+(kaList.length+4)+'">Belum ada siswa di rombel ini</td></tr>';
-  html += '</tbody></table></div>';
-  document.getElementById('rpk_output').innerHTML = html;
-  document.getElementById('rpk_exports').style.display = siswaList.length ? 'flex' : 'none';
-}
-
-/* =========================================================
-   REKAP BERDASARKAN WAKTU
-========================================================= */
-function initRekapWaktu(){
-  document.getElementById('rw_periode').value='harian';
-  handlePeriodeChange();
-  document.getElementById('rw_output').innerHTML='';
-  document.getElementById('rw_exports').style.display='none';
-}
-function handlePeriodeChange(){
-  const p = document.getElementById('rw_periode').value;
+function setPeriodPreset(p){
   const today = new Date();
-  const startEl = document.getElementById('rw_start'), endEl = document.getElementById('rw_end');
-  startEl.disabled=false; endEl.disabled=false;
-  if(p==='harian'){
-    startEl.value = todayStr(); endEl.value = todayStr(); startEl.disabled=true; endEl.disabled=true;
-  } else if(p==='mingguan'){
+  const startEl = document.getElementById('rk_start'), endEl = document.getElementById('rk_end');
+  if(p==='harian'){ startEl.value=todayStr(); endEl.value=todayStr(); }
+  else if(p==='mingguan'){
     const day = today.getDay()||7;
-    const monday = new Date(today); monday.setDate(today.getDate()-day+1);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
-    startEl.value = monday.toISOString().slice(0,10); endEl.value = sunday.toISOString().slice(0,10);
-    startEl.disabled=true; endEl.disabled=true;
+    const monday=new Date(today); monday.setDate(today.getDate()-day+1);
+    const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
+    startEl.value=monday.toISOString().slice(0,10); endEl.value=sunday.toISOString().slice(0,10);
   } else if(p==='bulanan'){
-    const first = new Date(today.getFullYear(), today.getMonth(), 1);
-    const last = new Date(today.getFullYear(), today.getMonth()+1, 0);
-    startEl.value = first.toISOString().slice(0,10); endEl.value = last.toISOString().slice(0,10);
-    startEl.disabled=true; endEl.disabled=true;
+    const first=new Date(today.getFullYear(),today.getMonth(),1);
+    const last=new Date(today.getFullYear(),today.getMonth()+1,0);
+    startEl.value=first.toISOString().slice(0,10); endEl.value=last.toISOString().slice(0,10);
   } else if(p==='semester'){
-    startEl.value=''; endEl.value=''; startEl.disabled=true; endEl.disabled=true;
-  } else {
     startEl.value=''; endEl.value='';
   }
 }
-function renderRekapWaktu(){
-  const p = document.getElementById('rw_periode').value;
-  let start = document.getElementById('rw_start').value, end = document.getElementById('rw_end').value;
-  let label = '';
-  if(p==='semester'){
-    const ta = DB.get('tahunAjaran',[]).find(t=>t.aktif);
-    label = ta ? ('Semester '+ta.semester+' — TP '+ta.tahun+' (seluruh tanggal tercatat)') : 'Tidak ada tahun pelajaran aktif';
-    start=''; end='';
-  } else {
-    label = (start?fmtDate(start):'Awal')+' s.d. '+(end?fmtDate(end):'Akhir');
-  }
+function getActiveTahunAjaran(){
+  return DB.get('tahunAjaran',[]).find(t=>t.aktif) || {tahun:'-', semester:'-'};
+}
+function renderRekap(){
+  const mode = document.getElementById('rk_mode').value;
+  const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
   const inRange = t => (!start || t>=start) && (!end || t<=end);
-  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal));
-  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal));
-  const siswaMap = Object.fromEntries(DB.get('siswa',[]).map(s=>[s.id,s]));
-  const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
+  let siswaList = [];
+  let kelasLabel = '';
+  if(mode==='personal'){
+    const siswaId = document.getElementById('rk_siswa').value;
+    const s = DB.get('siswa',[]).find(x=>x.id===siswaId);
+    if(!s){ document.getElementById('rk_output').innerHTML='<p class="helptext">Belum ada data siswa. Silakan tambahkan data siswa terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
+    siswaList = [s];
+    const rombel = DB.get('rombel',[]).find(r=>r.id===s.rombelId);
+    kelasLabel = 'Siswa: '+s.nama+'   |   Kelas: '+(rombel?rombel.nama:'-');
+  } else {
+    const rombelId = document.getElementById('rk_rombel').value;
+    const rombel = DB.get('rombel',[]).find(r=>r.id===rombelId);
+    if(!rombel){ document.getElementById('rk_output').innerHTML='<p class="helptext">Belum ada data rombel. Silakan tambahkan data rombel terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
+    siswaList = DB.get('siswa',[]).filter(s=>s.rombelId===rombelId);
+    kelasLabel = 'Kelas: '+rombel.nama;
+  }
+  const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
   const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
   const kpMap = Object.fromEntries(DB.get('kodePelanggaran',[]).map(k=>[k.id,k]));
+  const siswaIdSet = new Set(siswaList.map(s=>s.id));
+  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
+  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
+  const siswaMap = Object.fromEntries(siswaList.map(s=>[s.id,s]));
 
-  let html = '<div id="rw_wrap">';
-  html += '<p class="helptext" style="font-size:13px;margin-bottom:14px;"><b>Periode:</b> '+label+' &nbsp;•&nbsp; Ketidakhadiran: <b>'+absensi.length+'</b> &nbsp;•&nbsp; Pelanggaran: <b>'+pelanggaran.length+'</b></p>';
-  html += '<table id="rw_table"><thead><tr><th>Tanggal</th><th>Siswa</th><th>Rombel</th><th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
-  const rows = [
-    ...absensi.map(a=>({tanggal:a.tanggal, siswa:siswaMap[a.siswaId], jenis:'Tidak Hadir: '+(kaMap[a.kodeAbsenId]?kaMap[a.kodeAbsenId].ket:'-'), ket:a.ket||'-', poin:'-'})),
-    ...pelanggaran.map(p=>({tanggal:p.tanggal, siswa:siswaMap[p.siswaId], jenis:'Pelanggaran: '+(kpMap[p.kodePelanggaranId]?kpMap[p.kodePelanggaranId].nama:'-'), ket:p.ket||'-', poin:p.poin}))
-  ].sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
-  html += rows.length ? rows.map(r=>'<tr><td>'+fmtDate(r.tanggal)+'</td><td>'+(r.siswa?r.siswa.nama:'-')+'</td><td>'+(r.siswa&&rombelMap[r.siswa.rombelId]?rombelMap[r.siswa.rombelId].nama:'-')+'</td><td>'+r.jenis+'</td><td>'+r.ket+'</td><td>'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="6">Tidak ada data pada periode ini</td></tr>';
+  let rows = [
+    ...absensi.map(a=>{ const k=kaMap[a.kodeAbsenId]; return {tanggal:a.tanggal, siswa:siswaMap[a.siswaId], jenis:'Ketidakhadiran', ket:(k?(k.kode+' - '+k.ket):'-')+(a.ket?(' — '+a.ket):''), poin:k?(k.poin||0):0}; }),
+    ...pelanggaran.map(p=>{ const k=kpMap[p.kodePelanggaranId]; return {tanggal:p.tanggal, siswa:siswaMap[p.siswaId], jenis:'Pelanggaran', ket:(k?(k.kode+' - '+k.nama):'-')+(p.ket?(' — '+p.ket):''), poin:p.poin||0}; })
+  ].sort((a,b)=>{
+    if(a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
+    const an = a.siswa?a.siswa.nama:'', bn = b.siswa?b.siswa.nama:'';
+    return an.localeCompare(bn);
+  });
+  const totalPoin = rows.reduce((s,r)=>s+(r.poin||0),0);
+  const showSiswaCol = mode==='kelas';
+  rkMeta = {mode, kelasLabel, periodeLabel, totalPoin};
+
+  let html = '<div id="rk_wrap">';
+  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Ketidakhadiran: <b>'+absensi.length+'</b> &nbsp;•&nbsp; Pelanggaran: <b>'+pelanggaran.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoin+'</b></p>';
+  html += '<table id="rk_table"><thead><tr><th>No</th><th>Tanggal</th>'+(showSiswaCol?'<th>Nama Siswa</th>':'')+'<th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
+  const colCount = showSiswaCol ? 6 : 5;
+  html += rows.length ? rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(r.tanggal)+'</td>'+(showSiswaCol?'<td>'+(r.siswa?r.siswa.nama:'-')+'</td>':'')+'<td>'+r.jenis+'</td><td>'+r.ket+'</td><td class="kpoint">'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Tidak ada data pada periode ini</td></tr>';
+  if(rows.length){
+    html += '<tr><td colspan="'+(colCount-1)+'" style="text-align:right;font-weight:700;">Total Poin</td><td class="kpoint">'+totalPoin+'</td></tr>';
+  }
   html += '</tbody></table></div>';
-  document.getElementById('rw_output').innerHTML = html;
-  document.getElementById('rw_exports').style.display = rows.length ? 'flex' : 'none';
+  document.getElementById('rk_output').innerHTML = html;
+  document.getElementById('rk_exports').style.display = rows.length ? 'flex' : 'none';
+}
+
+function buildRekapHeaderLines(){
+  const profile = DB.get('profile', {});
+  const ta = getActiveTahunAjaran();
+  const line1 = 'DAFTAR KETIDAK HADIRAN DAN PELANGGARAN SISWA '+(profile.nama ? profile.nama.toUpperCase() : '(NAMA SEKOLAH BELUM DIATUR)');
+  const line2 = 'SEMESTER '+(ta.semester||'-').toUpperCase()+' TAHUN AJARAN '+(ta.tahun||'-');
+  const line3 = (rkMeta.kelasLabel||'') + '   |   Periode: ' + (rkMeta.periodeLabel||'-');
+  return {line1, line2, line3};
 }
 
 /* =========================================================
-   EXPORT: EXCEL / PDF / PRINT
+   EXPORT REKAP: EXCEL / PDF / PRINT
 ========================================================= */
-function exportTableToExcel(tableId, filename){
-  const table = document.getElementById(tableId);
-  if(!table){ toast('Tidak ada data untuk diekspor.','err'); return; }
-  const wb = XLSX.utils.table_to_book(table, {sheet:'Rekap'});
-  XLSX.writeFile(wb, filename+'.xlsx');
+function exportRekapExcel(){
+  const table = document.getElementById('rk_table');
+  if(!table){ toast('Tampilkan rekap terlebih dahulu sebelum mengekspor.','err'); return; }
+  const {line1, line2, line3} = buildRekapHeaderLines();
+  const headerCells = [...table.querySelectorAll('thead th')].map(th=>th.textContent);
+  const aoa = [[line1],[line2],[line3],[],headerCells];
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headerCells.map(()=>({wch:24}));
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:headerCells.length-1}},
+    {s:{r:1,c:0}, e:{r:1,c:headerCells.length-1}},
+    {s:{r:2,c:0}, e:{r:2,c:headerCells.length-1}}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
+  XLSX.writeFile(wb, 'Rekap_Ketidakhadiran_Pelanggaran.xlsx');
   toast('File Excel berhasil diunduh.','ok');
 }
-function exportTableToPDF(tableId, title){
-  const table = document.getElementById(tableId);
-  if(!table){ toast('Tidak ada data untuk diekspor.','err'); return; }
+function exportRekapPDF(){
+  const table = document.getElementById('rk_table');
+  if(!table){ toast('Tampilkan rekap terlebih dahulu sebelum mengekspor.','err'); return; }
+  const {line1, line2, line3} = buildRekapHeaderLines();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'landscape'});
-  const profile = DB.get('profile', {});
-  doc.setFontSize(13); doc.text(profile.nama || 'Laporan Sekolah', 14, 14);
-  doc.setFontSize(10); doc.text(title, 14, 21);
-  doc.autoTable({ html: '#'+tableId, startY: 27, styles:{fontSize:8}, headStyles:{fillColor:[11,37,69]} });
-  doc.save(title.replace(/\s+/g,'_')+'.pdf');
+  const pageW = doc.internal.pageSize.getWidth();
+  doc.setFont(undefined,'bold'); doc.setFontSize(12.5);
+  doc.text(line1, pageW/2, 14, {align:'center'});
+  doc.setFontSize(11);
+  doc.text(line2, pageW/2, 21, {align:'center'});
+  doc.setFont(undefined,'normal'); doc.setFontSize(9.5);
+  doc.text(line3, pageW/2, 27.5, {align:'center'});
+  doc.autoTable({ html: '#rk_table', startY: 33, styles:{fontSize:8}, headStyles:{fillColor:[11,37,69]} });
+  doc.save('Rekap_Ketidakhadiran_Pelanggaran.pdf');
   toast('File PDF berhasil diunduh.','ok');
 }
-function printSection(wrapId){
-  const wrap = document.getElementById(wrapId);
-  if(!wrap){ toast('Tidak ada data untuk dicetak.','err'); return; }
-  const profile = DB.get('profile', {});
+function printRekap(){
+  const wrap = document.getElementById('rk_wrap');
+  if(!wrap){ toast('Tampilkan rekap terlebih dahulu sebelum mencetak.','err'); return; }
+  const {line1, line2, line3} = buildRekapHeaderLines();
+  const clone = wrap.cloneNode(true);
+  const p = clone.querySelector('p.helptext');
+  if(p) p.remove();
   const printArea = document.getElementById('printArea');
   printArea.innerHTML = '<div style="font-family:Inter,sans-serif;padding:10px;">'+
-    '<div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #0b2545;padding-bottom:10px;margin-bottom:16px;">'+
-    (profile.logo?'<img src="'+profile.logo+'" style="width:50px;height:50px;object-fit:cover;border-radius:50%;">':'')+
-    '<div><div style="font-weight:700;font-size:16px;">'+(profile.nama||'Nama Sekolah')+'</div><div style="font-size:11px;color:#555;">'+(profile.alamat||'')+'</div></div></div>'+
-    wrap.innerHTML+
+    '<div style="text-align:center;border-bottom:2px solid #0b2545;padding-bottom:12px;margin-bottom:16px;">'+
+    '<div style="font-weight:800;font-size:16px;letter-spacing:.02em;">'+line1+'</div>'+
+    '<div style="font-weight:700;font-size:13px;margin-top:4px;">'+line2+'</div>'+
+    '</div>'+
+    '<div style="font-size:12.5px;margin-bottom:14px;">'+line3+'</div>'+
+    clone.innerHTML+
     '<div style="margin-top:30px;font-size:11px;color:#555;">Dicetak pada '+new Date().toLocaleString('id-ID')+' oleh '+currentUser.nama+'</div>'+
     '</div>';
   window.print();
@@ -1672,14 +1749,20 @@ function deleteUs(id){
 function resetUsForm(){ editUsId=null; ['us_nama','us_username','us_password'].forEach(id=>document.getElementById(id).value=''); document.getElementById('us_role').value='admin'; document.getElementById('usFormTitle').textContent='Tambah Akun'; }
 
 /* =========================================================
-   INIT
+   TAB SWITCH (Guru / Siswa import tabs)
 ========================================================= */
-(function init(){
-  generateCaptcha();
-  refreshLoginBranding();
-  const sess = sessionStorage.getItem('sikap_session');
-  if(sess){ currentUser = JSON.parse(sess); enterApp(); }
-})();
+function switchTab(group, name){
+  const pageId = ({guru:'guru', siswa:'siswa'}[group]) || group;
+  document.querySelectorAll('#page-'+pageId+' .tabbtn').forEach(b=>b.classList.remove('active'));
+  if(window.event && window.event.target) window.event.target.classList.add('active');
+  document.querySelectorAll('#page-'+pageId+' .tabpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(group+'-'+name).classList.add('active');
+}
+
+/* Catatan: inisialisasi aplikasi (captcha, branding, cek sesi login)
+   sekarang dijalankan oleh onDbFirstLoadComplete() setelah data
+   pertama kali berhasil dimuat dari Firebase — lihat bagian
+   FIREBASE CONNECT + REALTIME SYNC di atas. */
 </script>
 </body>
 </html>
