@@ -443,7 +443,7 @@ tbody tr:hover{background:#fbfcff;}
           </div>
         </div>
         <div class="tabpanel" id="guru-import">
-          <p class="helptext">Format CSV (baris pertama header): <span class="mono">nip,nama,jk,jabatan,telp,wa</span></p>
+          <p class="helptext">Format CSV dipisah <b>titik koma (;)</b> — baris pertama header: <span class="mono">nip;nama;jk;jabatan;telp;wa</span></p>
           <div class="form-actions" style="margin:0 0 14px;">
             <button class="btn" onclick="downloadCsvTemplate('guru')">⬇ Unduh Template CSV</button>
           </div>
@@ -452,7 +452,7 @@ tbody tr:hover{background:#fbfcff;}
             <input type="file" accept=".csv,text/csv" id="gr_csv_file" onchange="loadCsvFile(this,'gr_csv')">
           </div>
           <p class="helptext" style="margin:10px 0 6px;">Atau tempel data CSV langsung di bawah ini:</p>
-          <textarea id="gr_csv" rows="6" placeholder="nip,nama,jk,jabatan,telp,wa&#10;19800101,Ahmad Fauzi,L,Wali Kelas,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
+          <textarea id="gr_csv" rows="6" placeholder="nip;nama;jk;jabatan;telp;wa&#10;19800101;Ahmad Fauzi;L;Wali Kelas;0812xxxx;62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
           <div class="form-actions"><button class="btn btn-dark" onclick="importGuruCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('gr_csv').value='';document.getElementById('gr_csv_file').value=''">Bersihkan</button></div>
         </div>
         <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Foto</th><th>NIP</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>WhatsApp</th><th></th></tr></thead><tbody id="grTable"></tbody></table></div>
@@ -502,7 +502,7 @@ tbody tr:hover{background:#fbfcff;}
           </div>
         </div>
         <div class="tabpanel" id="siswa-import">
-          <p class="helptext">Format CSV (baris pertama header): <span class="mono">nis,nisn,nama,jk,rombel,namaortu,telportu,waortu</span> — nilai <b>rombel</b> harus sama persis dengan nama rombel yang sudah dibuat.</p>
+          <p class="helptext">Format CSV dipisah <b>titik koma (;)</b> — baris pertama header: <span class="mono">nis;nisn;nama;jk;rombel;namaortu;telportu;waortu</span> — nilai <b>rombel</b> harus sama persis dengan nama rombel yang sudah dibuat.</p>
           <div class="form-actions" style="margin:0 0 14px;">
             <button class="btn" onclick="downloadCsvTemplate('siswa')">⬇ Unduh Template CSV</button>
           </div>
@@ -511,7 +511,7 @@ tbody tr:hover{background:#fbfcff;}
             <input type="file" accept=".csv,text/csv" id="sv_csv_file" onchange="loadCsvFile(this,'sv_csv')">
           </div>
           <p class="helptext" style="margin:10px 0 6px;">Atau tempel data CSV langsung di bawah ini:</p>
-          <textarea id="sv_csv" rows="6" placeholder="nis,nisn,nama,jk,rombel,namaortu,telportu,waortu&#10;2025001,0031223344,Siti Aminah,P,VII-A,Budi Santoso,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
+          <textarea id="sv_csv" rows="6" placeholder="nis;nisn;nama;jk;rombel;namaortu;telportu;waortu&#10;2025001;0031223344;Siti Aminah;P;VII-A;Budi Santoso;0812xxxx;62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
           <div class="form-actions"><button class="btn btn-dark" onclick="importSiswaCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('sv_csv').value='';document.getElementById('sv_csv_file').value=''">Bersihkan</button></div>
         </div>
         <div class="toolbar" style="margin-top:14px;">
@@ -1265,7 +1265,7 @@ function parseCsvText(raw){
         } else { cur += ch; }
       } else {
         if(ch === '"'){ inQuotes = true; }
-        else if(ch === ','){ cells.push(cur.trim()); cur=''; }
+        else if(ch === ';'){ cells.push(cur.trim()); cur=''; }
         else { cur += ch; }
       }
     }
@@ -1278,11 +1278,11 @@ function downloadCsvTemplate(type){
   const templates = {
     guru: {
       filename: 'template_import_guru.csv',
-      content: 'nip,nama,jk,jabatan,telp,wa\n19800101,Ahmad Fauzi,L,Wali Kelas,0812xxxx,62812xxxx\n'
+      content: 'nip;nama;jk;jabatan;telp;wa\n19800101;Ahmad Fauzi;L;Wali Kelas;0812xxxx;62812xxxx\n'
     },
     siswa: {
       filename: 'template_import_siswa.csv',
-      content: 'nis,nisn,nama,jk,rombel,namaortu,telportu,waortu\n2025001,0031223344,Siti Aminah,P,VII-A,Budi Santoso,0812xxxx,62812xxxx\n'
+      content: 'nis;nisn;nama;jk;rombel;namaortu;telportu;waortu\n2025001;0031223344;Siti Aminah;P;VII-A;Budi Santoso;0812xxxx;62812xxxx\n'
     }
   };
   const t = templates[type];
