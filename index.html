@@ -9,8 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root{
   --navy-950:#0a1f38;
@@ -300,7 +298,7 @@ tbody tr:hover{background:#fbfcff;}
   <div class="spinner"></div>
   <div class="msg msg-loading">Menghubungkan ke database SIKAP...</div>
   <div class="err-box">
-    <div class="msg">⚠️ Gagal terhubung ke database. Periksa koneksi internet Anda, lalu coba lagi.</div>
+    <div class="msg" id="dbErrorMsg">⚠️ Gagal terhubung ke database. Periksa koneksi internet Anda, lalu coba lagi.</div>
     <button class="retry-btn" onclick="location.reload()">Coba Lagi</button>
   </div>
 </div>
@@ -451,7 +449,7 @@ tbody tr:hover{background:#fbfcff;}
       <div class="card">
         <div class="tabs">
           <button class="tabbtn active" onclick="switchTab('guru','input')">Input Manual</button>
-          <button class="tabbtn" onclick="switchTab('guru','import')">Impor CSV</button>
+          <button class="tabbtn" onclick="switchTab('guru','import')">Impor XLS</button>
         </div>
         <div class="tabpanel active" id="guru-input">
           <div class="form-panel">
@@ -469,9 +467,11 @@ tbody tr:hover{background:#fbfcff;}
           </div>
         </div>
         <div class="tabpanel" id="guru-import">
-          <p class="helptext">Format CSV (baris pertama header): <span class="mono">nip,nama,jk,jabatan,telp,wa</span></p>
-          <textarea id="gr_csv" rows="6" placeholder="nip,nama,jk,jabatan,telp,wa&#10;19800101,Ahmad Fauzi,L,Wali Kelas,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
-          <div class="form-actions"><button class="btn btn-dark" onclick="importGuruCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('gr_csv').value=''">Bersihkan</button></div>
+          <p class="helptext">Unduh template XLS, isi data sesuai kolom, lalu unggah kembali. Kolom: <span class="mono">nip,nama,jk,jabatan,telp,wa</span></p>
+          <div class="form-actions" style="margin:10px 0 16px;">
+            <button class="btn" onclick="downloadGuruTemplate()">⬇️ Unduh Template XLS</button>
+          </div>
+          <div class="field"><label>Unggah File XLS (.xlsx / .xls)</label><input type="file" id="gr_xls" accept=".xlsx,.xls" onchange="handleGuruXlsFile(this)"></div>
         </div>
         <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Foto</th><th>NIP</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>WhatsApp</th><th></th></tr></thead><tbody id="grTable"></tbody></table></div>
       </div>
@@ -500,7 +500,7 @@ tbody tr:hover{background:#fbfcff;}
       <div class="card">
         <div class="tabs">
           <button class="tabbtn active" onclick="switchTab('siswa','input')">Input Manual</button>
-          <button class="tabbtn" onclick="switchTab('siswa','import')">Impor CSV</button>
+          <button class="tabbtn" onclick="switchTab('siswa','import')">Impor XLS</button>
         </div>
         <div class="tabpanel active" id="siswa-input">
           <div class="form-panel">
@@ -520,9 +520,11 @@ tbody tr:hover{background:#fbfcff;}
           </div>
         </div>
         <div class="tabpanel" id="siswa-import">
-          <p class="helptext">Format CSV (baris pertama header): <span class="mono">nis,nisn,nama,jk,rombel,namaortu,telportu,waortu</span> — nilai <b>rombel</b> harus sama persis dengan nama rombel yang sudah dibuat.</p>
-          <textarea id="sv_csv" rows="6" placeholder="nis,nisn,nama,jk,rombel,namaortu,telportu,waortu&#10;2025001,0031223344,Siti Aminah,P,VII-A,Budi Santoso,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
-          <div class="form-actions"><button class="btn btn-dark" onclick="importSiswaCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('sv_csv').value=''">Bersihkan</button></div>
+          <p class="helptext">Unduh template XLS, isi data sesuai kolom, lalu unggah kembali. Kolom: <span class="mono">nis,nisn,nama,jk,rombel,namaortu,telportu,waortu</span> — nilai <b>rombel</b> harus sama persis dengan nama rombel yang sudah dibuat.</p>
+          <div class="form-actions" style="margin:10px 0 16px;">
+            <button class="btn" onclick="downloadSiswaTemplate()">⬇️ Unduh Template XLS</button>
+          </div>
+          <div class="field"><label>Unggah File XLS (.xlsx / .xls)</label><input type="file" id="sv_xls" accept=".xlsx,.xls" onchange="handleSiswaXlsFile(this)"></div>
         </div>
         <div class="toolbar" style="margin-top:14px;">
           <input id="svSearch" placeholder="Cari nama / NIS..." style="min-width:220px;" oninput="renderSiswaTable()">
@@ -627,6 +629,10 @@ tbody tr:hover{background:#fbfcff;}
           </select>
           <select id="rk_siswa" style="min-width:230px;"></select>
           <select id="rk_rombel" style="min-width:200px;display:none;"></select>
+          <select id="rk_format" style="font-weight:600;">
+            <option value="lengkap">Model: Lengkap</option>
+            <option value="ringkas">Model: Ringkas</option>
+          </select>
         </div>
         <div class="toolbar">
           <button class="btn btn-sm" onclick="setPeriodPreset('harian')">Hari Ini</button>
@@ -713,13 +719,13 @@ tbody tr:hover{background:#fbfcff;}
    ikut tampil secara otomatis. )
 ========================================================= */
 const firebaseConfig = {
-  apiKey: "AIzaSyDelBBrABBvttz_Am7MRUs-FcsI-aQgnJk",
-  authDomain: "sikap-sekolah.firebaseapp.com",
-  databaseURL: "https://sikap-sekolah-default-rtdb.firebaseio.com",
-  projectId: "sikap-sekolah",
-  storageBucket: "sikap-sekolah.firebasestorage.app",
-  messagingSenderId: "680199533235",
-  appId: "1:680199533235:web:5a41ef09706568b16e76c6"
+  apiKey: "AIzaSyD_A-i5RZafoR_mzRxBk14ROFZex75DAjA",
+  authDomain: "sikap-database-smanbaureno.firebaseapp.com",
+  databaseURL: "https://sikap-database-smanbaureno-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sikap-database-smanbaureno",
+  storageBucket: "sikap-database-smanbaureno.firebasestorage.app",
+  messagingSenderId: "510705567670",
+  appId: "1:510705567670:web:4476d76f9a3730da056317"
 };
 const FB_ROOT = 'sikap_data';
 const DB_KEYS = ['profile','users','tahunAjaran','rombel','guru','siswa','kodeAbsen','kodePelanggaran','absensi','pelanggaran','waLog','waTpl'];
@@ -786,7 +792,42 @@ function seedIfEmpty(){
 /* =========================================================
    FIREBASE CONNECT + REALTIME SYNC
 ========================================================= */
+/* Firebase SDK dimuat secara dinamis: dicoba dulu dari CDN resmi
+   Google (gstatic.com); jika gagal (mis. domain gstatic.com diblokir
+   oleh jaringan/firewall/ad-blocker), otomatis dicoba ulang dari
+   cermin (mirror) jsDelivr agar aplikasi tetap bisa terhubung. */
+function loadScriptWithFallback(primaryUrl, fallbackUrl){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = primaryUrl;
+    s.onload = ()=>resolve();
+    s.onerror = ()=>{
+      if(!fallbackUrl){ reject(new Error('Gagal memuat '+primaryUrl)); return; }
+      const s2 = document.createElement('script');
+      s2.src = fallbackUrl;
+      s2.onload = ()=>resolve();
+      s2.onerror = ()=>reject(new Error('Gagal memuat '+fallbackUrl));
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+  });
+}
+function loadFirebaseSdk(){
+  const FB_VER = '10.12.2';
+  return loadScriptWithFallback(
+    'https://www.gstatic.com/firebasejs/'+FB_VER+'/firebase-app-compat.js',
+    'https://cdn.jsdelivr.net/npm/firebase@'+FB_VER+'/firebase-app-compat.js'
+  ).then(()=> loadScriptWithFallback(
+    'https://www.gstatic.com/firebasejs/'+FB_VER+'/firebase-database-compat.js',
+    'https://cdn.jsdelivr.net/npm/firebase@'+FB_VER+'/firebase-database-compat.js'
+  ));
+}
 function connectFirebase(){
+  if(typeof firebase === 'undefined'){
+    console.error('Firebase SDK tidak berhasil dimuat.');
+    showDbError('⚠️ Gagal memuat pustaka Firebase (SDK). Periksa koneksi internet Anda atau nonaktifkan pemblokir iklan/ekstensi yang mungkin memblokir gstatic.com, lalu coba lagi.');
+    return;
+  }
   try{
     fbApp = firebase.initializeApp(firebaseConfig);
     fbDb = firebase.database();
@@ -833,10 +874,14 @@ function onDbFirstLoadComplete(){
   const sess = sessionStorage.getItem('sikap_session');
   if(sess){ currentUser = JSON.parse(sess); enterApp(); }
 }
-function showDbError(){
+function showDbError(msg){
+  if(msg){ const el = document.getElementById('dbErrorMsg'); if(el) el.textContent = msg; }
   document.getElementById('dbOverlay').classList.add('error');
 }
-connectFirebase();
+loadFirebaseSdk().then(connectFirebase).catch(err=>{
+  console.error('Gagal memuat Firebase SDK:', err);
+  showDbError('⚠️ Gagal memuat pustaka Firebase (SDK) dari jaringan. Periksa koneksi internet Anda, lalu coba lagi.');
+});
 
 /* =========================================================
    AUTH / LOGIN
@@ -1229,20 +1274,47 @@ function resetGrForm(){
   window._pendingFoto_gr=null;
   document.getElementById('grFormTitle').textContent='Tambah Guru';
 }
-function importGuruCsv(){
-  const raw = document.getElementById('gr_csv').value.trim();
-  if(!raw){ toast('Tempelkan data CSV terlebih dahulu.','err'); return; }
-  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  const start = lines[0].toLowerCase().includes('nip') ? 1 : 0;
+function downloadGuruTemplate(){
+  const aoa = [
+    ['nip','nama','jk','jabatan','telp','wa'],
+    ['19800101','Ahmad Fauzi','L','Wali Kelas','0812xxxx','62812xxxx']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:16},{wch:26},{wch:6},{wch:18},{wch:16},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template Guru');
+  XLSX.writeFile(wb, 'Template_Data_Guru.xlsx');
+}
+function handleGuruXlsFile(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+      importGuruRows(rows);
+    }catch(err){
+      console.error(err);
+      toast('Gagal membaca file XLS: '+err.message,'err');
+    }
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+function importGuruRows(rows){
+  rows = rows.map(r=>r.map(x=>String(x==null?'':x).trim())).filter(r=>r.some(x=>x));
+  if(!rows.length){ toast('File kosong atau tidak sesuai format template.','err'); return; }
+  const start = (rows[0][0]||'').toLowerCase().includes('nip') ? 1 : 0;
   let list = DB.get('guru', []); let count=0;
-  for(let i=start;i<lines.length;i++){
-    const c = lines[i].split(',').map(x=>x.trim());
+  for(let i=start;i<rows.length;i++){
+    const c = rows[i];
     if(!c[1]) continue;
-    list.push({id:uid('gr'), nip:c[0]||'', nama:c[1], jk:c[2]||'L', jabatan:c[3]||'', telp:c[4]||'', wa:c[5]||'', foto:''});
+    list.push({id:uid('gr'), nip:c[0]||'', nama:c[1], jk:(c[2]||'L').toUpperCase(), jabatan:c[3]||'', telp:c[4]||'', wa:c[5]||'', foto:''});
     count++;
   }
   DB.set('guru', list);
-  document.getElementById('gr_csv').value='';
   renderGrTable();
   toast(count+' data guru berhasil diimpor.','ok');
 }
@@ -1315,23 +1387,50 @@ function resetSvForm(){
   window._pendingFoto_sv=null;
   document.getElementById('svFormTitle').textContent='Tambah Siswa';
 }
-function importSiswaCsv(){
-  const raw = document.getElementById('sv_csv').value.trim();
-  if(!raw){ toast('Tempelkan data CSV terlebih dahulu.','err'); return; }
-  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  const start = lines[0].toLowerCase().includes('nis') ? 1 : 0;
+function downloadSiswaTemplate(){
+  const aoa = [
+    ['nis','nisn','nama','jk','rombel','namaortu','telportu','waortu'],
+    ['2025001','0031223344','Siti Aminah','P','VII-A','Budi Santoso','0812xxxx','62812xxxx']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:14},{wch:16},{wch:26},{wch:6},{wch:12},{wch:22},{wch:16},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template Siswa');
+  XLSX.writeFile(wb, 'Template_Data_Siswa.xlsx');
+}
+function handleSiswaXlsFile(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+      importSiswaRows(rows);
+    }catch(err){
+      console.error(err);
+      toast('Gagal membaca file XLS: '+err.message,'err');
+    }
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+function importSiswaRows(rows){
+  rows = rows.map(r=>r.map(x=>String(x==null?'':x).trim())).filter(r=>r.some(x=>x));
+  if(!rows.length){ toast('File kosong atau tidak sesuai format template.','err'); return; }
+  const start = (rows[0][0]||'').toLowerCase().includes('nis') ? 1 : 0;
   const rombelList = DB.get('rombel', []);
   let list = DB.get('siswa', []); let count=0, skippedRombel=0;
-  for(let i=start;i<lines.length;i++){
-    const c = lines[i].split(',').map(x=>x.trim());
+  for(let i=start;i<rows.length;i++){
+    const c = rows[i];
     if(!c[2]) continue;
     const rombel = rombelList.find(r=>r.nama.toLowerCase()===(c[4]||'').toLowerCase());
     if(c[4] && !rombel) skippedRombel++;
-    list.push({id:uid('sv'), nis:c[0]||'', nisn:c[1]||'', nama:c[2], jk:c[3]||'L', rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
+    list.push({id:uid('sv'), nis:c[0]||'', nisn:c[1]||'', nama:c[2], jk:(c[3]||'L').toUpperCase(), rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
     count++;
   }
   DB.set('siswa', list);
-  document.getElementById('sv_csv').value='';
   fillRombelFilter(); renderSiswaTable();
   toast(count+' data siswa berhasil diimpor.'+(skippedRombel?(' '+skippedRombel+' baris rombel tidak ditemukan.'):''),'ok');
 }
@@ -1555,6 +1654,7 @@ function sendWaForPelanggaran(rec){
 let rkMeta = {};
 function initRekap(){
   document.getElementById('rk_mode').value='personal';
+  document.getElementById('rk_format').value='lengkap';
   const siswaSel = document.getElementById('rk_siswa');
   siswaSel.innerHTML = DB.get('siswa',[]).map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('') || '<option value="">— Belum ada siswa —</option>';
   const rombelSel = document.getElementById('rk_rombel');
@@ -1590,26 +1690,51 @@ function setPeriodPreset(p){
 function getActiveTahunAjaran(){
   return DB.get('tahunAjaran',[]).find(t=>t.aktif) || {tahun:'-', semester:'-'};
 }
-function renderRekap(){
+/* Menentukan daftar siswa, label kelas, dan wali kelas terkait berdasarkan mode rekap.
+   Untuk mode kelas, SELURUH siswa yang terdaftar pada rombel tsb disertakan
+   (bukan hanya yang memiliki catatan ketidakhadiran/pelanggaran). */
+function resolveRekapContext(){
   const mode = document.getElementById('rk_mode').value;
-  const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
-  const inRange = t => (!start || t>=start) && (!end || t<=end);
-  let siswaList = [];
-  let kelasLabel = '';
+  const guruList = DB.get('guru',[]);
   if(mode==='personal'){
     const siswaId = document.getElementById('rk_siswa').value;
     const s = DB.get('siswa',[]).find(x=>x.id===siswaId);
-    if(!s){ document.getElementById('rk_output').innerHTML='<p class="helptext">Belum ada data siswa. Silakan tambahkan data siswa terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
-    siswaList = [s];
+    if(!s) return null;
     const rombel = DB.get('rombel',[]).find(r=>r.id===s.rombelId);
-    kelasLabel = 'Siswa: '+s.nama+'   |   Kelas: '+(rombel?rombel.nama:'-');
+    const waliInfo = rombel ? guruList.find(g=>g.id===rombel.waliKelasId) : null;
+    return {mode, siswaList:[s], kelasLabel:'Siswa: '+s.nama+'   |   Kelas: '+(rombel?rombel.nama:'-'), waliInfo};
   } else {
     const rombelId = document.getElementById('rk_rombel').value;
     const rombel = DB.get('rombel',[]).find(r=>r.id===rombelId);
-    if(!rombel){ document.getElementById('rk_output').innerHTML='<p class="helptext">Belum ada data rombel. Silakan tambahkan data rombel terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
-    siswaList = DB.get('siswa',[]).filter(s=>s.rombelId===rombelId);
-    kelasLabel = 'Kelas: '+rombel.nama;
+    if(!rombel) return null;
+    const siswaList = DB.get('siswa',[]).filter(s=>s.rombelId===rombelId).sort((a,b)=>a.nama.localeCompare(b.nama));
+    const waliInfo = guruList.find(g=>g.id===rombel.waliKelasId);
+    return {mode, siswaList, kelasLabel:'Kelas: '+rombel.nama, waliInfo};
   }
+}
+function buildTandaTanganHtml(waliInfo){
+  const tgl = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const nama = waliInfo ? waliInfo.nama : '..........................................';
+  const nip = waliInfo && waliInfo.nip ? 'NIP. '+waliInfo.nip : 'NIP. ..........................................';
+  return '<div class="rk-ttd" style="margin-top:40px;display:flex;justify-content:flex-end;">'+
+    '<div style="text-align:center;min-width:220px;font-size:12.5px;line-height:1.7;">'+
+    '<div>'+tgl+'</div>'+
+    '<div style="font-weight:700;">Wali Kelas</div>'+
+    '<div style="height:64px;"></div>'+
+    '<div style="font-weight:700;text-decoration:underline;">'+nama+'</div>'+
+    '<div>'+nip+'</div>'+
+    '</div></div>';
+}
+function renderRekap(){
+  const format = document.getElementById('rk_format').value;
+  if(format==='ringkas') renderRekapRingkas(); else renderRekapLengkap();
+}
+function renderRekapLengkap(){
+  const ctx = resolveRekapContext();
+  if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
+  const {mode, siswaList, kelasLabel, waliInfo} = ctx;
+  const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
+  const inRange = t => (!start || t>=start) && (!end || t<=end);
   const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
   const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
   const kpMap = Object.fromEntries(DB.get('kodePelanggaran',[]).map(k=>[k.id,k]));
@@ -1628,7 +1753,7 @@ function renderRekap(){
   });
   const totalPoin = rows.reduce((s,r)=>s+(r.poin||0),0);
   const showSiswaCol = mode==='kelas';
-  rkMeta = {mode, kelasLabel, periodeLabel, totalPoin};
+  rkMeta = {format:'lengkap', mode, kelasLabel, periodeLabel, totalPoin, waliInfo};
 
   let html = '<div id="rk_wrap">';
   html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Ketidakhadiran: <b>'+absensi.length+'</b> &nbsp;•&nbsp; Pelanggaran: <b>'+pelanggaran.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoin+'</b></p>';
@@ -1638,9 +1763,72 @@ function renderRekap(){
   if(rows.length){
     html += '<tr><td colspan="'+(colCount-1)+'" style="text-align:right;font-weight:700;">Total Poin</td><td class="kpoint">'+totalPoin+'</td></tr>';
   }
-  html += '</tbody></table></div>';
+  html += '</tbody></table>';
+  html += buildTandaTanganHtml(waliInfo);
+  html += '</div>';
   document.getElementById('rk_output').innerHTML = html;
   document.getElementById('rk_exports').style.display = rows.length ? 'flex' : 'none';
+}
+/* Model Ringkas: satu baris per siswa (seluruh siswa terdaftar pada kelas
+   disertakan, termasuk yang tidak punya catatan) — kolom jumlah ketidakhadiran
+   dibuat otomatis mengikuti kode absen (S, I, A, DS, DP, dst.) yang terdaftar. */
+function renderRekapRingkas(){
+  const ctx = resolveRekapContext();
+  if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
+  const {mode, siswaList, kelasLabel, waliInfo} = ctx;
+  const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
+  const inRange = t => (!start || t>=start) && (!end || t<=end);
+  const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
+  const kodeAbsenList = DB.get('kodeAbsen', []);
+  const kaMap = Object.fromEntries(kodeAbsenList.map(k=>[k.id,k]));
+  const siswaIdSet = new Set(siswaList.map(s=>s.id));
+  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
+  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
+
+  const summary = {};
+  siswaList.forEach(s=>{
+    summary[s.id] = {siswa:s, counts:{}, poinAbsen:0, poinPelanggaran:0};
+    kodeAbsenList.forEach(k=> summary[s.id].counts[k.id]=0);
+  });
+  absensi.forEach(a=>{
+    const row = summary[a.siswaId]; if(!row) return;
+    if(row.counts[a.kodeAbsenId]===undefined) return;
+    row.counts[a.kodeAbsenId]++;
+    const k = kaMap[a.kodeAbsenId];
+    row.poinAbsen += k ? (k.poin||0) : 0;
+  });
+  pelanggaran.forEach(p=>{
+    const row = summary[p.siswaId]; if(!row) return;
+    row.poinPelanggaran += (p.poin||0);
+  });
+  const rowsData = siswaList.map(s=>summary[s.id]);
+  const totalPoinAll = rowsData.reduce((sum,r)=>sum + r.poinAbsen + r.poinPelanggaran, 0);
+  rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList};
+
+  let html = '<div id="rk_wrap">';
+  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Jumlah Siswa: <b>'+siswaList.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoinAll+'</b></p>';
+  html += '<table id="rk_table"><thead><tr><th rowspan="2">No</th><th rowspan="2">Nama</th><th colspan="'+Math.max(kodeAbsenList.length,1)+'">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Pelanggaran</th><th rowspan="2">Total Poin</th></tr><tr>'+
+    (kodeAbsenList.length ? kodeAbsenList.map(k=>'<th>'+k.kode+'</th>').join('') : '<th>-</th>')+
+  '</tr></thead><tbody>';
+  const colCount = 4 + Math.max(kodeAbsenList.length,1);
+  html += rowsData.length ? rowsData.map((r,i)=>{
+    const total = r.poinAbsen + r.poinPelanggaran;
+    return '<tr><td>'+(i+1)+'</td><td style="text-align:left;">'+r.siswa.nama+'</td>'+
+      (kodeAbsenList.length ? kodeAbsenList.map(k=>'<td>'+(r.counts[k.id]||0)+'</td>').join('') : '<td>-</td>')+
+      '<td class="kpoint">'+r.poinPelanggaran+'</td><td class="kpoint">'+total+'</td></tr>';
+  }).join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Belum ada siswa terdaftar</td></tr>';
+  if(rowsData.length){
+    const sumCounts = kodeAbsenList.map(k=>rowsData.reduce((s,r)=>s+(r.counts[k.id]||0),0));
+    const sumPelanggaran = rowsData.reduce((s,r)=>s+r.poinPelanggaran,0);
+    html += '<tr><td colspan="2" style="text-align:right;font-weight:700;">Jumlah</td>'+
+      (kodeAbsenList.length ? sumCounts.map(v=>'<td style="font-weight:700;">'+v+'</td>').join('') : '<td></td>')+
+      '<td class="kpoint">'+sumPelanggaran+'</td><td class="kpoint">'+totalPoinAll+'</td></tr>';
+  }
+  html += '</tbody></table>';
+  html += buildTandaTanganHtml(waliInfo);
+  html += '</div>';
+  document.getElementById('rk_output').innerHTML = html;
+  document.getElementById('rk_exports').style.display = rowsData.length ? 'flex' : 'none';
 }
 
 function buildRekapHeaderLines(){
@@ -1648,7 +1836,7 @@ function buildRekapHeaderLines(){
   const ta = getActiveTahunAjaran();
   const line1 = 'DAFTAR KETIDAK HADIRAN DAN PELANGGARAN SISWA '+(profile.nama ? profile.nama.toUpperCase() : '(NAMA SEKOLAH BELUM DIATUR)');
   const line2 = 'SEMESTER '+(ta.semester||'-').toUpperCase()+' TAHUN AJARAN '+(ta.tahun||'-');
-  const line3 = (rkMeta.kelasLabel||'') + '   |   Periode: ' + (rkMeta.periodeLabel||'-');
+  const line3 = (rkMeta.kelasLabel||'') + '   |   Periode: ' + (rkMeta.periodeLabel||'-') + (rkMeta.format==='ringkas' ? '   |   Model: Ringkas' : '');
   return {line1, line2, line3};
 }
 
@@ -1659,18 +1847,56 @@ function exportRekapExcel(){
   const table = document.getElementById('rk_table');
   if(!table){ toast('Tampilkan rekap terlebih dahulu sebelum mengekspor.','err'); return; }
   const {line1, line2, line3} = buildRekapHeaderLines();
-  const headerCells = [...table.querySelectorAll('thead th')].map(th=>th.textContent);
-  const aoa = [[line1],[line2],[line3],[],headerCells];
-  table.querySelectorAll('tbody tr').forEach(tr=>{
-    aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
-  });
+  let aoa = [[line1],[line2],[line3],[]];
+  let merges = [];
+  let colCount;
+
+  if(rkMeta.format==='ringkas'){
+    const kodeList = rkMeta.kodeAbsenList && rkMeta.kodeAbsenList.length ? rkMeta.kodeAbsenList : [{kode:'-'}];
+    colCount = 4 + kodeList.length;
+    const headerStartRow = aoa.length;
+    const headerRow1 = ['No','Nama','Jumlah Ketidakhadiran', ...kodeList.slice(1).map(()=>''), 'Poin Pelanggaran','Total Poin'];
+    const headerRow2 = ['','', ...kodeList.map(k=>k.kode), '', ''];
+    aoa.push(headerRow1, headerRow2);
+    merges.push(
+      {s:{r:headerStartRow,c:0}, e:{r:headerStartRow+1,c:0}},
+      {s:{r:headerStartRow,c:1}, e:{r:headerStartRow+1,c:1}},
+      {s:{r:headerStartRow,c:2}, e:{r:headerStartRow,c:1+kodeList.length}},
+      {s:{r:headerStartRow,c:2+kodeList.length}, e:{r:headerStartRow+1,c:2+kodeList.length}},
+      {s:{r:headerStartRow,c:3+kodeList.length}, e:{r:headerStartRow+1,c:3+kodeList.length}}
+    );
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
+    });
+  } else {
+    const headerCells = [...table.querySelectorAll('thead tr')[0].querySelectorAll('th')].map(th=>th.textContent);
+    colCount = headerCells.length;
+    aoa.push(headerCells);
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
+    });
+  }
+
+  const tgl = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const namaWali = rkMeta.waliInfo ? rkMeta.waliInfo.nama : '..........................................';
+  const nipWali = rkMeta.waliInfo && rkMeta.waliInfo.nip ? 'NIP. '+rkMeta.waliInfo.nip : 'NIP. ..........................................';
+  const ttdCol = Math.max(0, colCount-3);
+  const pad = ()=>Array(ttdCol).fill('');
+  aoa.push([]);
+  aoa.push([...pad(), tgl]);
+  aoa.push([...pad(), 'Wali Kelas']);
+  aoa.push([]); aoa.push([]);
+  aoa.push([...pad(), namaWali]);
+  aoa.push([...pad(), nipWali]);
+
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = headerCells.map(()=>({wch:24}));
-  ws['!merges'] = [
-    {s:{r:0,c:0}, e:{r:0,c:headerCells.length-1}},
-    {s:{r:1,c:0}, e:{r:1,c:headerCells.length-1}},
-    {s:{r:2,c:0}, e:{r:2,c:headerCells.length-1}}
-  ];
+  ws['!cols'] = Array.from({length:colCount}, ()=>({wch:20}));
+  merges.unshift(
+    {s:{r:0,c:0}, e:{r:0,c:colCount-1}},
+    {s:{r:1,c:0}, e:{r:1,c:colCount-1}},
+    {s:{r:2,c:0}, e:{r:2,c:colCount-1}}
+  );
+  ws['!merges'] = merges;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Rekap');
   XLSX.writeFile(wb, 'Rekap_Ketidakhadiran_Pelanggaran.xlsx');
@@ -1690,6 +1916,23 @@ function exportRekapPDF(){
   doc.setFont(undefined,'normal'); doc.setFontSize(9.5);
   doc.text(line3, pageW/2, 27.5, {align:'center'});
   doc.autoTable({ html: '#rk_table', startY: 33, styles:{fontSize:8}, headStyles:{fillColor:[11,37,69]} });
+
+  const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 33;
+  const tgl = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const namaWali = rkMeta.waliInfo ? rkMeta.waliInfo.nama : '..........................................';
+  const nipWali = rkMeta.waliInfo && rkMeta.waliInfo.nip ? 'NIP. '+rkMeta.waliInfo.nip : 'NIP. ..........................................';
+  const pageH = doc.internal.pageSize.getHeight();
+  let ttdY = finalY + 14;
+  if(ttdY + 34 > pageH){ doc.addPage(); ttdY = 20; }
+  const ttdX = pageW - 60;
+  doc.setFont(undefined,'normal'); doc.setFontSize(10);
+  doc.text(tgl, ttdX, ttdY, {align:'center'});
+  doc.setFont(undefined,'bold');
+  doc.text('Wali Kelas', ttdX, ttdY+6, {align:'center'});
+  doc.text(namaWali, ttdX, ttdY+32, {align:'center'});
+  doc.setFont(undefined,'normal'); doc.setFontSize(9);
+  doc.text(nipWali, ttdX, ttdY+37, {align:'center'});
+
   doc.save('Rekap_Ketidakhadiran_Pelanggaran.pdf');
   toast('File PDF berhasil diunduh.','ok');
 }
