@@ -9,8 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root{
   --navy-950:#0a1f38;
@@ -261,20 +259,6 @@ tbody tr:hover{background:#fbfcff;}
 .check-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;}
 .kpoint{font-weight:700;}
 
-/* ---------- DB CONNECTION OVERLAY ---------- */
-#dbOverlay{
-  position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-  background:linear-gradient(160deg,var(--navy-950),var(--navy-900) 55%,var(--navy-800));color:#fff;text-align:center;padding:24px;
-}
-#dbOverlay .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--gold-500);border-radius:50%;animation:dbspin .8s linear infinite;}
-@keyframes dbspin{to{transform:rotate(360deg);}}
-#dbOverlay .msg{font-size:13.5px;color:#cdd7ea;max-width:340px;line-height:1.6;}
-#dbOverlay .err-box{display:none;flex-direction:column;align-items:center;gap:12px;}
-#dbOverlay.error .spinner, #dbOverlay.error .msg-loading{display:none;}
-#dbOverlay.error .err-box{display:flex;}
-#dbOverlay .retry-btn{border:none;background:var(--gold-500);color:var(--navy-950);font-weight:700;padding:9px 20px;border-radius:8px;font-size:13px;}
-#dbOverlay .retry-btn:hover{background:var(--gold-600);color:#fff;}
-
 /* ---------- PRINT ---------- */
 #printArea{display:none;}
 @media print{
@@ -294,16 +278,6 @@ tbody tr:hover{background:#fbfcff;}
 </style>
 </head>
 <body>
-
-<!-- ============ FIREBASE CONNECTION OVERLAY ============ -->
-<div id="dbOverlay">
-  <div class="spinner"></div>
-  <div class="msg msg-loading">Menghubungkan ke database SIKAP...</div>
-  <div class="err-box">
-    <div class="msg">⚠️ Gagal terhubung ke database. Periksa koneksi internet Anda, lalu coba lagi.</div>
-    <button class="retry-btn" onclick="location.reload()">Coba Lagi</button>
-  </div>
-</div>
 
 <!-- ============ LOGIN PAGE ============ -->
 <div id="loginPage">
@@ -470,8 +444,16 @@ tbody tr:hover{background:#fbfcff;}
         </div>
         <div class="tabpanel" id="guru-import">
           <p class="helptext">Format CSV (baris pertama header): <span class="mono">nip,nama,jk,jabatan,telp,wa</span></p>
+          <div class="form-actions" style="margin:0 0 14px;">
+            <button class="btn" onclick="downloadCsvTemplate('guru')">⬇ Unduh Template CSV</button>
+          </div>
+          <div class="field" style="max-width:420px;">
+            <label>Unggah File CSV</label>
+            <input type="file" accept=".csv,text/csv" id="gr_csv_file" onchange="loadCsvFile(this,'gr_csv')">
+          </div>
+          <p class="helptext" style="margin:10px 0 6px;">Atau tempel data CSV langsung di bawah ini:</p>
           <textarea id="gr_csv" rows="6" placeholder="nip,nama,jk,jabatan,telp,wa&#10;19800101,Ahmad Fauzi,L,Wali Kelas,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
-          <div class="form-actions"><button class="btn btn-dark" onclick="importGuruCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('gr_csv').value=''">Bersihkan</button></div>
+          <div class="form-actions"><button class="btn btn-dark" onclick="importGuruCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('gr_csv').value='';document.getElementById('gr_csv_file').value=''">Bersihkan</button></div>
         </div>
         <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Foto</th><th>NIP</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>WhatsApp</th><th></th></tr></thead><tbody id="grTable"></tbody></table></div>
       </div>
@@ -521,8 +503,16 @@ tbody tr:hover{background:#fbfcff;}
         </div>
         <div class="tabpanel" id="siswa-import">
           <p class="helptext">Format CSV (baris pertama header): <span class="mono">nis,nisn,nama,jk,rombel,namaortu,telportu,waortu</span> — nilai <b>rombel</b> harus sama persis dengan nama rombel yang sudah dibuat.</p>
+          <div class="form-actions" style="margin:0 0 14px;">
+            <button class="btn" onclick="downloadCsvTemplate('siswa')">⬇ Unduh Template CSV</button>
+          </div>
+          <div class="field" style="max-width:420px;">
+            <label>Unggah File CSV</label>
+            <input type="file" accept=".csv,text/csv" id="sv_csv_file" onchange="loadCsvFile(this,'sv_csv')">
+          </div>
+          <p class="helptext" style="margin:10px 0 6px;">Atau tempel data CSV langsung di bawah ini:</p>
           <textarea id="sv_csv" rows="6" placeholder="nis,nisn,nama,jk,rombel,namaortu,telportu,waortu&#10;2025001,0031223344,Siti Aminah,P,VII-A,Budi Santoso,0812xxxx,62812xxxx" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
-          <div class="form-actions"><button class="btn btn-dark" onclick="importSiswaCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('sv_csv').value=''">Bersihkan</button></div>
+          <div class="form-actions"><button class="btn btn-dark" onclick="importSiswaCsv()">Impor Data</button><button class="btn" onclick="document.getElementById('sv_csv').value='';document.getElementById('sv_csv_file').value=''">Bersihkan</button></div>
         </div>
         <div class="toolbar" style="margin-top:14px;">
           <input id="svSearch" placeholder="Cari nama / NIS..." style="min-width:220px;" oninput="renderSiswaTable()">
@@ -701,142 +691,54 @@ tbody tr:hover{background:#fbfcff;}
 
 <script>
 /* =========================================================
-   DATABASE LAYER — Firebase Realtime Database
-   (Data disimpan online di Firebase, bukan lagi localStorage.
-   Sebuah cache lokal in-memory (dbCache) menyimpan salinan
-   terkini dari setiap koleksi agar seluruh kode UI yang sudah
-   ada — yang memanggil DB.get()/DB.set() secara sinkron —
-   tetap berjalan tanpa perlu diubah menjadi async/await.
-   dbCache selalu disinkronkan otomatis dengan Firebase melalui
-   listener real-time (on('value')), sehingga perubahan yang
-   dilakukan pengguna lain (mis. admin di perangkat lain) akan
-   ikut tampil secara otomatis. )
+   DATABASE LAYER (localStorage)
 ========================================================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyDelBBrABBvttz_Am7MRUs-FcsI-aQgnJk",
-  authDomain: "sikap-sekolah.firebaseapp.com",
-  databaseURL: "https://sikap-sekolah-default-rtdb.firebaseio.com",
-  projectId: "sikap-sekolah",
-  storageBucket: "sikap-sekolah.firebasestorage.app",
-  messagingSenderId: "680199533235",
-  appId: "1:680199533235:web:5a41ef09706568b16e76c6"
-};
-const FB_ROOT = 'sikap_data';
-const DB_KEYS = ['profile','users','tahunAjaran','rombel','guru','siswa','kodeAbsen','kodePelanggaran','absensi','pelanggaran','waLog','waTpl'];
-
-let fbApp = null, fbDb = null;
-let dbCache = {};
-let dbReady = false;
-
 const DB = {
-  get(key, def){
-    const v = dbCache[key];
-    return (v !== undefined && v !== null) ? v : (def!==undefined ? def : []);
-  },
-  set(key, val){
-    dbCache[key] = val; // optimistic local update -> UI tetap terasa instan
-    if(!fbDb){ return; }
-    fbDb.ref(FB_ROOT+'/'+key).set(val).catch(err=>{
-      console.error('Firebase write error:', err);
-      toast('Gagal menyimpan ke database online: '+err.message, 'err');
-    });
-  }
+  get(key, def){ try{ const v = localStorage.getItem('sikap_'+key); return v ? JSON.parse(v) : (def!==undefined?def:[]); }catch(e){ return def!==undefined?def:[]; } },
+  set(key, val){ localStorage.setItem('sikap_'+key, JSON.stringify(val)); }
 };
 function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmtDate(d){ if(!d) return '-'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
 
 /* =========================================================
-   SEED DEFAULT DATA (hanya ditulis sekali, saat database
-   online masih kosong / belum pernah diisi sama sekali)
+   SEED DEFAULT DATA
 ========================================================= */
 function seedIfEmpty(){
-  if(dbCache.users && dbCache.users.length){ return; } // sudah ada data, jangan timpa
-  DB.set('profile', dbCache.profile || {nama:'', npsn:'', alamat:'', email:'', telp:'', ig:'', fb:'', logo:''});
-  DB.set('users', [
-    {id:uid('u'), nama:'Administrator', username:'admin', password:'admin123', role:'admin'},
-    {id:uid('u'), nama:'Guru Piket 1', username:'user1', password:'user123', role:'user'}
-  ]);
-  DB.set('tahunAjaran', dbCache.tahunAjaran && dbCache.tahunAjaran.length ? dbCache.tahunAjaran : [{id:uid('ta'), tahun:'2025/2026', semester:'Ganjil', aktif:true}]);
-  DB.set('rombel', dbCache.rombel || []);
-  DB.set('guru', dbCache.guru || []);
-  DB.set('siswa', dbCache.siswa || []);
-  DB.set('kodeAbsen', dbCache.kodeAbsen && dbCache.kodeAbsen.length ? dbCache.kodeAbsen : [
-    {id:uid('ka'), kode:'S', ket:'Sakit', poin:0},
-    {id:uid('ka'), kode:'I', ket:'Izin', poin:0},
-    {id:uid('ka'), kode:'A', ket:'Alpa / Tanpa Keterangan', poin:10},
-    {id:uid('ka'), kode:'T', ket:'Terlambat', poin:2}
-  ]);
-  DB.set('kodePelanggaran', dbCache.kodePelanggaran && dbCache.kodePelanggaran.length ? dbCache.kodePelanggaran : [
-    {id:uid('kp'), kode:'P01', nama:'Terlambat masuk sekolah', kategori:'Ringan', poin:5},
-    {id:uid('kp'), kode:'P02', nama:'Tidak mengerjakan tugas', kategori:'Ringan', poin:5},
-    {id:uid('kp'), kode:'P03', nama:'Atribut seragam tidak lengkap', kategori:'Ringan', poin:10},
-    {id:uid('kp'), kode:'P04', nama:'Membolos jam pelajaran', kategori:'Sedang', poin:25},
-    {id:uid('kp'), kode:'P05', nama:'Berkelahi dengan teman', kategori:'Berat', poin:75}
-  ]);
-  DB.set('absensi', dbCache.absensi || []);
-  DB.set('pelanggaran', dbCache.pelanggaran || []);
-  DB.set('waLog', dbCache.waLog || []);
-  DB.set('waTpl', dbCache.waTpl || {
-    absen:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan bahwa ananda tercatat {status} pada tanggal {tanggal}. Keterangan: {keterangan}. Terima kasih. - {sekolah}',
-    pel:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan ananda tercatat melakukan pelanggaran "{pelanggaran}" (kategori {kategori}, poin {poin}) pada tanggal {tanggal}. Mohon menjadi perhatian bersama. Terima kasih. - {sekolah}'
-  });
-}
-
-/* =========================================================
-   FIREBASE CONNECT + REALTIME SYNC
-========================================================= */
-function connectFirebase(){
-  try{
-    fbApp = firebase.initializeApp(firebaseConfig);
-    fbDb = firebase.database();
-  }catch(err){
-    console.error(err);
-    showDbError();
-    return;
-  }
-  let pending = DB_KEYS.length;
-  let failed = false;
-  const timeoutId = setTimeout(()=>{ if(!dbReady) showDbError(); }, 15000);
-
-  DB_KEYS.forEach(key=>{
-    let firstLoad = true;
-    fbDb.ref(FB_ROOT+'/'+key).on('value', snap=>{
-      dbCache[key] = snap.val();
-      if(firstLoad){
-        firstLoad = false;
-        pending--;
-        if(pending===0 && !dbReady){
-          clearTimeout(timeoutId);
-          onDbFirstLoadComplete();
-        }
-      } else if(dbReady){
-        // Perubahan real-time dari sesi/perangkat lain
-        if(document.getElementById('appPage').style.display !== 'none'){
-          renderPageContent(currentPage);
-        } else {
-          refreshLoginBranding();
-        }
-      }
-    }, err=>{
-      console.error('Firebase read error:', err);
-      if(!failed){ failed = true; clearTimeout(timeoutId); showDbError(); }
+  if(!localStorage.getItem('sikap_seeded')){
+    DB.set('profile', {nama:'', npsn:'', alamat:'', email:'', telp:'', ig:'', fb:'', logo:''});
+    DB.set('users', [
+      {id:uid('u'), nama:'Administrator', username:'admin', password:'admin123', role:'admin'},
+      {id:uid('u'), nama:'Guru Piket 1', username:'user1', password:'user123', role:'user'}
+    ]);
+    DB.set('tahunAjaran', [{id:uid('ta'), tahun:'2025/2026', semester:'Ganjil', aktif:true}]);
+    DB.set('rombel', []);
+    DB.set('guru', []);
+    DB.set('siswa', []);
+    DB.set('kodeAbsen', [
+      {id:uid('ka'), kode:'S', ket:'Sakit', poin:0},
+      {id:uid('ka'), kode:'I', ket:'Izin', poin:0},
+      {id:uid('ka'), kode:'A', ket:'Alpa / Tanpa Keterangan', poin:10},
+      {id:uid('ka'), kode:'T', ket:'Terlambat', poin:2}
+    ]);
+    DB.set('kodePelanggaran', [
+      {id:uid('kp'), kode:'P01', nama:'Terlambat masuk sekolah', kategori:'Ringan', poin:5},
+      {id:uid('kp'), kode:'P02', nama:'Tidak mengerjakan tugas', kategori:'Ringan', poin:5},
+      {id:uid('kp'), kode:'P03', nama:'Atribut seragam tidak lengkap', kategori:'Ringan', poin:10},
+      {id:uid('kp'), kode:'P04', nama:'Membolos jam pelajaran', kategori:'Sedang', poin:25},
+      {id:uid('kp'), kode:'P05', nama:'Berkelahi dengan teman', kategori:'Berat', poin:75}
+    ]);
+    DB.set('absensi', []);
+    DB.set('pelanggaran', []);
+    DB.set('waLog', []);
+    DB.set('waTpl', {
+      absen:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan bahwa ananda tercatat {status} pada tanggal {tanggal}. Keterangan: {keterangan}. Terima kasih. - {sekolah}',
+      pel:'Yth. Orang Tua/Wali dari {nama}. Kami informasikan ananda tercatat melakukan pelanggaran "{pelanggaran}" (kategori {kategori}, poin {poin}) pada tanggal {tanggal}. Mohon menjadi perhatian bersama. Terima kasih. - {sekolah}'
     });
-  });
+    localStorage.setItem('sikap_seeded','1');
+  }
 }
-function onDbFirstLoadComplete(){
-  seedIfEmpty();
-  dbReady = true;
-  document.getElementById('dbOverlay').style.display='none';
-  generateCaptcha();
-  refreshLoginBranding();
-  const sess = sessionStorage.getItem('sikap_session');
-  if(sess){ currentUser = JSON.parse(sess); enterApp(); }
-}
-function showDbError(){
-  document.getElementById('dbOverlay').classList.add('error');
-}
-connectFirebase();
+seedIfEmpty();
 
 /* =========================================================
    AUTH / LOGIN
@@ -1231,18 +1133,21 @@ function resetGrForm(){
 }
 function importGuruCsv(){
   const raw = document.getElementById('gr_csv').value.trim();
-  if(!raw){ toast('Tempelkan data CSV terlebih dahulu.','err'); return; }
-  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  const start = lines[0].toLowerCase().includes('nip') ? 1 : 0;
+  if(!raw){ toast('Tempelkan data CSV atau unggah file CSV terlebih dahulu.','err'); return; }
+  const lines = parseCsvText(raw);
+  if(!lines.length){ toast('Data CSV kosong atau tidak valid.','err'); return; }
+  const start = lines[0][0] && lines[0][0].toLowerCase().includes('nip') ? 1 : 0;
   let list = DB.get('guru', []); let count=0;
   for(let i=start;i<lines.length;i++){
-    const c = lines[i].split(',').map(x=>x.trim());
+    const c = lines[i];
     if(!c[1]) continue;
-    list.push({id:uid('gr'), nip:c[0]||'', nama:c[1], jk:c[2]||'L', jabatan:c[3]||'', telp:c[4]||'', wa:c[5]||'', foto:''});
+    list.push({id:uid('gr'), nip:c[0]||'', nama:c[1], jk:(c[2]||'L').toUpperCase(), jabatan:c[3]||'', telp:c[4]||'', wa:c[5]||'', foto:''});
     count++;
   }
+  if(!count){ toast('Tidak ada baris data guru yang valid untuk diimpor.','err'); return; }
   DB.set('guru', list);
   document.getElementById('gr_csv').value='';
+  const grFile = document.getElementById('gr_csv_file'); if(grFile) grFile.value='';
   renderGrTable();
   toast(count+' data guru berhasil diimpor.','ok');
 }
@@ -1317,23 +1222,95 @@ function resetSvForm(){
 }
 function importSiswaCsv(){
   const raw = document.getElementById('sv_csv').value.trim();
-  if(!raw){ toast('Tempelkan data CSV terlebih dahulu.','err'); return; }
-  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  const start = lines[0].toLowerCase().includes('nis') ? 1 : 0;
+  if(!raw){ toast('Tempelkan data CSV atau unggah file CSV terlebih dahulu.','err'); return; }
+  const lines = parseCsvText(raw);
+  if(!lines.length){ toast('Data CSV kosong atau tidak valid.','err'); return; }
+  const start = lines[0][0] && lines[0][0].toLowerCase().includes('nis') ? 1 : 0;
   const rombelList = DB.get('rombel', []);
   let list = DB.get('siswa', []); let count=0, skippedRombel=0;
   for(let i=start;i<lines.length;i++){
-    const c = lines[i].split(',').map(x=>x.trim());
+    const c = lines[i];
     if(!c[2]) continue;
     const rombel = rombelList.find(r=>r.nama.toLowerCase()===(c[4]||'').toLowerCase());
     if(c[4] && !rombel) skippedRombel++;
-    list.push({id:uid('sv'), nis:c[0]||'', nisn:c[1]||'', nama:c[2], jk:c[3]||'L', rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
+    list.push({id:uid('sv'), nis:c[0]||'', nisn:c[1]||'', nama:c[2], jk:(c[3]||'L').toUpperCase(), rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
     count++;
   }
+  if(!count){ toast('Tidak ada baris data siswa yang valid untuk diimpor.','err'); return; }
   DB.set('siswa', list);
   document.getElementById('sv_csv').value='';
+  const svFile = document.getElementById('sv_csv_file'); if(svFile) svFile.value='';
   fillRombelFilter(); renderSiswaTable();
   toast(count+' data siswa berhasil diimpor.'+(skippedRombel?(' '+skippedRombel+' baris rombel tidak ditemukan.'):''),'ok');
+}
+
+/* =========================================================
+   CSV HELPERS: parsing tahan-banting, unduh template, unggah file
+========================================================= */
+function parseCsvText(raw){
+  // Bersihkan BOM & normalisasi akhir baris (Windows/Excel export)
+  let text = (raw||'').replace(/^\uFEFF/, '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const rows = [];
+  for(let line of text.split('\n')){
+    line = line.trim();
+    if(!line) continue;
+    // Dukung nilai yang dibungkus tanda kutip ganda berisi koma, mis: "Jl. A, No.1"
+    const cells = [];
+    let cur = '', inQuotes = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(inQuotes){
+        if(ch === '"'){
+          if(line[i+1] === '"'){ cur += '"'; i++; } else { inQuotes = false; }
+        } else { cur += ch; }
+      } else {
+        if(ch === '"'){ inQuotes = true; }
+        else if(ch === ','){ cells.push(cur.trim()); cur=''; }
+        else { cur += ch; }
+      }
+    }
+    cells.push(cur.trim());
+    rows.push(cells);
+  }
+  return rows;
+}
+function downloadCsvTemplate(type){
+  const templates = {
+    guru: {
+      filename: 'template_import_guru.csv',
+      content: 'nip,nama,jk,jabatan,telp,wa\n19800101,Ahmad Fauzi,L,Wali Kelas,0812xxxx,62812xxxx\n'
+    },
+    siswa: {
+      filename: 'template_import_siswa.csv',
+      content: 'nis,nisn,nama,jk,rombel,namaortu,telportu,waortu\n2025001,0031223344,Siti Aminah,P,VII-A,Budi Santoso,0812xxxx,62812xxxx\n'
+    }
+  };
+  const t = templates[type];
+  if(!t) return;
+  const blob = new Blob(['\ufeff'+t.content], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = t.filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Template CSV berhasil diunduh.','ok');
+}
+function loadCsvFile(input, textareaId){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(!/\.csv$/i.test(file.name) && file.type && file.type!=='text/csv' && file.type!=='application/vnd.ms-excel'){
+    toast('Berkas harus berformat .csv','err');
+    input.value=''; return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    document.getElementById(textareaId).value = e.target.result;
+    toast('File CSV berhasil dimuat. Klik "Impor Data" untuk melanjutkan.','ok');
+  };
+  reader.onerror = function(){
+    toast('Gagal membaca file CSV.','err');
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 /* =========================================================
@@ -1759,10 +1736,15 @@ function switchTab(group, name){
   document.getElementById(group+'-'+name).classList.add('active');
 }
 
-/* Catatan: inisialisasi aplikasi (captcha, branding, cek sesi login)
-   sekarang dijalankan oleh onDbFirstLoadComplete() setelah data
-   pertama kali berhasil dimuat dari Firebase — lihat bagian
-   FIREBASE CONNECT + REALTIME SYNC di atas. */
+/* =========================================================
+   INIT
+========================================================= */
+(function init(){
+  generateCaptcha();
+  refreshLoginBranding();
+  const sess = sessionStorage.getItem('sikap_session');
+  if(sess){ currentUser = JSON.parse(sess); enterApp(); }
+})();
 </script>
 </body>
 </html>
