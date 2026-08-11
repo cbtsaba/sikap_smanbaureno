@@ -255,6 +255,17 @@ tbody tr:hover{background:#fbfcff;}
 .modal h3{margin:0 0 8px;}
 .modal p{color:var(--ink-soft);font-size:13.5px;line-height:1.6;}
 .modal .form-actions{justify-content:flex-end;}
+.edit-modal-backdrop{position:fixed;inset:0;background:rgba(10,20,35,.55);z-index:940;display:none;}
+.edit-modal-backdrop.show{display:block;}
+.form-panel.as-modal{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:950;background:#fff;max-width:640px;width:92vw;max-height:88vh;overflow-y:auto;
+  box-shadow:0 30px 80px rgba(0,0,0,.4);border-radius:14px;padding:26px;
+}
+.form-panel.as-modal::before{
+  content:'✏️ Mode Ubah Data';display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--navy-700);background:var(--blue-100);padding:4px 10px;border-radius:6px;width:max-content;margin-bottom:12px;
+}
 
 .check-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px;}
 .kpoint{font-weight:700;}
@@ -473,7 +484,12 @@ tbody tr:hover{background:#fbfcff;}
           </div>
           <div class="field"><label>Unggah File XLS (.xlsx / .xls)</label><input type="file" id="gr_xls" accept=".xlsx,.xls" onchange="handleGuruXlsFile(this)"></div>
         </div>
-        <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Foto</th><th>NIP</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>WhatsApp</th><th></th></tr></thead><tbody id="grTable"></tbody></table></div>
+        <div class="toolbar" id="grBulkBar" style="display:none;margin-top:10px;background:var(--blue-100);border-radius:8px;padding:10px 12px;">
+          <span id="grBulkCount" style="font-weight:700;color:var(--navy-900);font-size:13px;"></span>
+          <button class="btn btn-sm btn-red" onclick="bulkDeleteGuru()">🗑️ Hapus</button>
+          <button class="btn btn-sm" onclick="clearGrSelection()">Batal Pilih</button>
+        </div>
+        <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th style="width:34px;"><input type="checkbox" id="grSelectAll" onchange="toggleSelectAllGuru(this)"></th><th>Foto</th><th>NIP</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>WhatsApp</th><th></th></tr></thead><tbody id="grTable"></tbody></table></div>
       </div>
     </section>
 
@@ -530,7 +546,13 @@ tbody tr:hover{background:#fbfcff;}
           <input id="svSearch" placeholder="Cari nama / NIS..." style="min-width:220px;" oninput="renderSiswaTable()">
           <select id="svFilterRombel" onchange="renderSiswaTable()"><option value="">Semua Rombel</option></select>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Foto</th><th>NIS</th><th>Nama</th><th>JK</th><th>Rombel</th><th>WA Ortu</th><th></th></tr></thead><tbody id="svTable"></tbody></table></div>
+        <div class="toolbar" id="svBulkBar" style="display:none;margin-top:10px;background:var(--blue-100);border-radius:8px;padding:10px 12px;">
+          <span id="svBulkCount" style="font-weight:700;color:var(--navy-900);font-size:13px;"></span>
+          <button class="btn btn-sm btn-dark" onclick="openPindahRombelModal()">🔀 Pindah Rombel</button>
+          <button class="btn btn-sm btn-red" onclick="bulkDeleteSiswa()">🗑️ Hapus</button>
+          <button class="btn btn-sm" onclick="clearSvSelection()">Batal Pilih</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th style="width:34px;"><input type="checkbox" id="svSelectAll" onchange="toggleSelectAllSiswa(this)"></th><th>Foto</th><th>NIS</th><th>Nama</th><th>JK</th><th>Rombel</th><th>WA Ortu</th><th></th></tr></thead><tbody id="svTable"></tbody></table></div>
       </div>
     </section>
 
@@ -574,16 +596,19 @@ tbody tr:hover{background:#fbfcff;}
       <div class="topbar"><div><h1>Input Ketidakhadiran</h1><div class="desc">Catat status kehadiran siswa harian.</div></div></div>
       <div class="card">
         <div class="form-panel">
-          <h4>Form Ketidakhadiran</h4>
+          <h4 id="abFormTitle">Form Ketidakhadiran</h4>
           <div class="form-grid">
             <div class="field"><label>Tanggal</label><input type="date" id="ab_tanggal"></div>
-            <div class="field"><label>Rombel</label><select id="ab_rombel" onchange="fillSiswaSelect('ab_siswa', this.value)"></select></div>
-            <div class="field"><label>Siswa</label><select id="ab_siswa"></select></div>
+            <div class="field"><label>Rombel</label><select id="ab_rombel" onchange="document.getElementById('ab_siswaSearch').value='';fillSiswaSelect('ab_siswa', this.value)"></select></div>
+            <div class="field"><label>Siswa</label>
+              <input id="ab_siswaSearch" placeholder="🔎 Cari nama / NIS siswa..." style="margin-bottom:6px;" oninput="fillSiswaSelect('ab_siswa', document.getElementById('ab_rombel').value, this.value)">
+              <select id="ab_siswa"></select>
+            </div>
             <div class="field"><label>Status</label><select id="ab_kode"></select></div>
             <div class="field" style="grid-column:span 2;"><label>Keterangan (opsional)</label><input id="ab_ket"></div>
           </div>
           <div class="check-row"><input type="checkbox" id="ab_wa" checked><label for="ab_wa">Kirim notifikasi WhatsApp ke orang tua setelah disimpan</label></div>
-          <div class="form-actions"><button class="btn btn-dark" onclick="saveAbsensi()">💾 Simpan Ketidakhadiran</button></div>
+          <div class="form-actions"><button class="btn btn-dark" id="abSaveBtn" onclick="saveAbsensi()">💾 Simpan Ketidakhadiran</button><button class="btn" id="abCancelBtn" style="display:none;" onclick="resetAbForm()">Batal</button></div>
         </div>
         <div class="toolbar">
           <input type="date" id="abFilterDate" onchange="renderAbsensiTable()">
@@ -598,17 +623,20 @@ tbody tr:hover{background:#fbfcff;}
       <div class="topbar"><div><h1>Input Pelanggaran</h1><div class="desc">Catat pelanggaran tata tertib siswa.</div></div></div>
       <div class="card">
         <div class="form-panel">
-          <h4>Form Pelanggaran</h4>
+          <h4 id="plFormTitle">Form Pelanggaran</h4>
           <div class="form-grid">
             <div class="field"><label>Tanggal</label><input type="date" id="pl_tanggal"></div>
-            <div class="field"><label>Rombel</label><select id="pl_rombel" onchange="fillSiswaSelect('pl_siswa', this.value)"></select></div>
-            <div class="field"><label>Siswa</label><select id="pl_siswa"></select></div>
+            <div class="field"><label>Rombel</label><select id="pl_rombel" onchange="document.getElementById('pl_siswaSearch').value='';fillSiswaSelect('pl_siswa', this.value)"></select></div>
+            <div class="field"><label>Siswa</label>
+              <input id="pl_siswaSearch" placeholder="🔎 Cari nama / NIS siswa..." style="margin-bottom:6px;" oninput="fillSiswaSelect('pl_siswa', document.getElementById('pl_rombel').value, this.value)">
+              <select id="pl_siswa"></select>
+            </div>
             <div class="field"><label>Jenis Pelanggaran</label><select id="pl_kode" onchange="updatePoinPreview()"></select></div>
             <div class="field"><label>Poin</label><input id="pl_poin" type="number" readonly style="background:#f0f2f7;"></div>
             <div class="field" style="grid-column:span 2;"><label>Kronologi / Keterangan</label><input id="pl_ket"></div>
           </div>
           <div class="check-row"><input type="checkbox" id="pl_wa" checked><label for="pl_wa">Kirim notifikasi WhatsApp ke orang tua setelah disimpan</label></div>
-          <div class="form-actions"><button class="btn btn-dark" onclick="savePelanggaran()">💾 Simpan Pelanggaran</button></div>
+          <div class="form-actions"><button class="btn btn-dark" id="plSaveBtn" onclick="savePelanggaran()">💾 Simpan Pelanggaran</button><button class="btn" id="plCancelBtn" style="display:none;" onclick="resetPlForm()">Batal</button></div>
         </div>
         <div class="toolbar">
           <input type="date" id="plFilterDate" onchange="renderPelanggaranTable()">
@@ -702,6 +730,20 @@ tbody tr:hover{background:#fbfcff;}
     </div>
   </div>
 </div>
+
+<div class="modal-bg" id="pindahRombelModalBg">
+  <div class="modal">
+    <h3>Pindah Rombel</h3>
+    <p id="prCount"></p>
+    <div class="field"><label>Rombel Tujuan</label><select id="prRombelTarget"></select></div>
+    <div class="form-actions">
+      <button class="btn" onclick="closePindahRombelModal()">Batal</button>
+      <button class="btn btn-dark" onclick="confirmPindahRombel()">Pindahkan</button>
+    </div>
+  </div>
+</div>
+
+<div class="edit-modal-backdrop" id="editModalBackdrop" onclick="if(activeEditModal && activeEditModal.resetFn) activeEditModal.resetFn();"></div>
 
 <div id="printArea"></div>
 
@@ -1046,6 +1088,29 @@ function confirmAction(title, text, onOk){
 function closeConfirm(){ document.getElementById('confirmModalBg').classList.remove('show'); }
 
 /* =========================================================
+   EDIT DATA — TAMPILAN POPUP
+   Form yang sama dipakai untuk tambah & ubah data; saat mode
+   ubah, form-panel ditampilkan sebagai popup mengambang.
+========================================================= */
+let activeEditModal = null;
+function openEditModal(panelSelector, resetFn){
+  const panel = document.querySelector(panelSelector);
+  if(!panel) return;
+  panel.classList.add('as-modal');
+  document.getElementById('editModalBackdrop').classList.add('show');
+  activeEditModal = {panelSelector, resetFn};
+  panel.scrollIntoView({block:'center'});
+}
+function closeAnyEditModal(){
+  if(activeEditModal){
+    const panel = document.querySelector(activeEditModal.panelSelector);
+    if(panel) panel.classList.remove('as-modal');
+  }
+  document.getElementById('editModalBackdrop').classList.remove('show');
+  activeEditModal = null;
+}
+
+/* =========================================================
    DASHBOARD
 ========================================================= */
 function renderDashboard(){
@@ -1205,6 +1270,7 @@ function editRb(id){
   document.getElementById('rb_nama').value=r.nama; document.getElementById('rb_tingkat').value=r.tingkat||'';
   document.getElementById('rb_wali').value=r.waliKelasId||'';
   document.getElementById('rbFormTitle').textContent='Ubah Rombel';
+  openEditModal('#page-rombel .form-panel', resetRbForm);
 }
 function deleteRb(id){
   confirmAction('Hapus Rombel','Menghapus rombel tidak akan menghapus data siswa di dalamnya. Lanjutkan?', ()=>{
@@ -1215,6 +1281,7 @@ function deleteRb(id){
 function resetRbForm(){
   editRbId=null; document.getElementById('rb_nama').value=''; document.getElementById('rb_tingkat').value=''; document.getElementById('rb_wali').value='';
   document.getElementById('rbFormTitle').textContent='Tambah Rombel';
+  closeAnyEditModal();
 }
 
 /* =========================================================
@@ -1231,9 +1298,44 @@ function handlePersonPhoto(input, prefix){
 function renderGrTable(){
   const list = DB.get('guru', []);
   document.getElementById('grTable').innerHTML = list.length ? list.map(g=>
-    '<tr><td><img class="avatar" src="'+(g.foto||fallbackAvatar())+'"></td><td>'+(g.nip||'-')+'</td><td>'+g.nama+'</td><td>'+g.jk+'</td><td>'+(g.jabatan||'-')+'</td><td>'+(g.wa||'-')+'</td>'+
+    '<tr><td><input type="checkbox" class="gr-check" value="'+g.id+'" onchange="updateGrBulkBar()"></td><td><img class="avatar" src="'+(g.foto||fallbackAvatar())+'"></td><td>'+(g.nip||'-')+'</td><td>'+g.nama+'</td><td>'+g.jk+'</td><td>'+(g.jabatan||'-')+'</td><td>'+(g.wa||'-')+'</td>'+
     '<td><button class="btn btn-sm" onclick="editGr(\''+g.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deleteGr(\''+g.id+'\')">Hapus</button></td></tr>'
-  ).join('') : '<tr class="empty-row"><td colspan="7">Belum ada data guru</td></tr>';
+  ).join('') : '<tr class="empty-row"><td colspan="8">Belum ada data guru</td></tr>';
+  updateGrBulkBar();
+}
+function getSelectedGuruIds(){
+  return [...document.querySelectorAll('.gr-check:checked')].map(c=>c.value);
+}
+function updateGrBulkBar(){
+  const ids = getSelectedGuruIds();
+  const bar = document.getElementById('grBulkBar');
+  const selectAll = document.getElementById('grSelectAll');
+  const allBoxes = document.querySelectorAll('.gr-check');
+  if(selectAll) selectAll.checked = allBoxes.length>0 && ids.length===allBoxes.length;
+  if(bar){
+    if(ids.length){ bar.style.display='flex'; document.getElementById('grBulkCount').textContent = ids.length+' guru dipilih'; }
+    else{ bar.style.display='none'; }
+  }
+}
+function toggleSelectAllGuru(cb){
+  document.querySelectorAll('.gr-check').forEach(c=>c.checked=cb.checked);
+  updateGrBulkBar();
+}
+function clearGrSelection(){
+  document.querySelectorAll('.gr-check').forEach(c=>c.checked=false);
+  const sa = document.getElementById('grSelectAll'); if(sa) sa.checked=false;
+  updateGrBulkBar();
+}
+function bulkDeleteGuru(){
+  const ids = getSelectedGuruIds();
+  if(!ids.length){ toast('Pilih minimal satu guru terlebih dahulu.','err'); return; }
+  confirmAction('Hapus Data Guru Terpilih', 'Menghapus '+ids.length+' data guru terpilih. Data yang dihapus tidak dapat dikembalikan. Lanjutkan?', ()=>{
+    const idsSet = new Set(ids);
+    DB.set('guru', DB.get('guru',[]).filter(g=>!idsSet.has(g.id)));
+    clearGrSelection();
+    renderGrTable();
+    toast(ids.length+' data guru dihapus.','ok');
+  });
 }
 function fallbackAvatar(){ return 'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23e7edf6"/></svg>'); }
 function saveGuru(){
@@ -1261,6 +1363,7 @@ function editGr(id){
   document.getElementById('gr_jk').value=g.jk; document.getElementById('gr_jabatan').value=g.jabatan||'';
   document.getElementById('gr_telp').value=g.telp||''; document.getElementById('gr_wa').value=g.wa||'';
   document.getElementById('grFormTitle').textContent='Ubah Data Guru';
+  openEditModal('#guru-input .form-panel', resetGrForm);
 }
 function deleteGr(id){
   confirmAction('Hapus Data Guru','Data yang dihapus tidak dapat dikembalikan. Lanjutkan?', ()=>{
@@ -1273,6 +1376,7 @@ function resetGrForm(){
   document.getElementById('gr_jk').value='L'; document.getElementById('gr_foto').value='';
   window._pendingFoto_gr=null;
   document.getElementById('grFormTitle').textContent='Tambah Guru';
+  closeAnyEditModal();
 }
 function downloadGuruTemplate(){
   const aoa = [
@@ -1341,14 +1445,86 @@ function renderSiswaTable(){
   if(fr) list = list.filter(s=> s.rombelId===fr);
   const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
   document.getElementById('svTable').innerHTML = list.length ? list.map(s=>
-    '<tr><td><img class="avatar" src="'+(s.foto||fallbackAvatar())+'"></td><td>'+(s.nis||'-')+'</td><td>'+s.nama+'</td><td>'+s.jk+'</td><td>'+(rombelMap[s.rombelId]?rombelMap[s.rombelId].nama:'-')+'</td><td>'+(s.waOrtu||'-')+'</td>'+
-    '<td><button class="btn btn-sm" onclick="editSv(\''+s.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deleteSv(\''+s.id+'\')">Hapus</button></td></tr>'
-  ).join('') : '<tr class="empty-row"><td colspan="7">Belum ada data siswa</td></tr>';
+    '<tr><td><input type="checkbox" class="sv-check" value="'+s.id+'" onchange="updateSvBulkBar()"></td><td><img class="avatar" src="'+(s.foto||fallbackAvatar())+'"></td><td>'+(s.nis||'-')+'</td><td>'+s.nama+'</td><td>'+s.jk+'</td><td>'+(rombelMap[s.rombelId]?rombelMap[s.rombelId].nama:'-')+'</td><td>'+(s.waOrtu||'-')+'</td>'+
+    '<td><button class="btn btn-sm" onclick="editSv(\''+s.id+'\')">Ubah</button> <button class="btn btn-sm" onclick="openPindahRombelModal(\''+s.id+'\')">Pindah Rombel</button> <button class="btn btn-sm btn-red" onclick="deleteSv(\''+s.id+'\')">Hapus</button></td></tr>'
+  ).join('') : '<tr class="empty-row"><td colspan="8">Belum ada data siswa</td></tr>';
+  updateSvBulkBar();
+}
+/* ---- Seleksi massal & Pindah Rombel ---- */
+function getSelectedSiswaIds(){
+  return [...document.querySelectorAll('.sv-check:checked')].map(c=>c.value);
+}
+function updateSvBulkBar(){
+  const ids = getSelectedSiswaIds();
+  const bar = document.getElementById('svBulkBar');
+  const selectAll = document.getElementById('svSelectAll');
+  const allBoxes = document.querySelectorAll('.sv-check');
+  if(selectAll) selectAll.checked = allBoxes.length>0 && ids.length===allBoxes.length;
+  if(bar){
+    if(ids.length){
+      bar.style.display='flex';
+      document.getElementById('svBulkCount').textContent = ids.length+' siswa dipilih';
+    } else {
+      bar.style.display='none';
+    }
+  }
+}
+function toggleSelectAllSiswa(cb){
+  document.querySelectorAll('.sv-check').forEach(c=>c.checked=cb.checked);
+  updateSvBulkBar();
+}
+function clearSvSelection(){
+  document.querySelectorAll('.sv-check').forEach(c=>c.checked=false);
+  const sa = document.getElementById('svSelectAll'); if(sa) sa.checked=false;
+  updateSvBulkBar();
+}
+let pindahRombelTargetIds = [];
+function openPindahRombelModal(singleId){
+  pindahRombelTargetIds = singleId ? [singleId] : getSelectedSiswaIds();
+  if(!pindahRombelTargetIds.length){ toast('Pilih minimal satu siswa terlebih dahulu.','err'); return; }
+  const sel = document.getElementById('prRombelTarget');
+  const rombel = DB.get('rombel', []);
+  sel.innerHTML = '<option value="">— Pilih Rombel Tujuan —</option>'+rombel.map(r=>'<option value="'+r.id+'">'+r.nama+'</option>').join('');
+  document.getElementById('prCount').textContent = pindahRombelTargetIds.length+' siswa akan dipindahkan ke rombel yang dipilih.';
+  document.getElementById('pindahRombelModalBg').classList.add('show');
+}
+function closePindahRombelModal(){
+  document.getElementById('pindahRombelModalBg').classList.remove('show');
+  pindahRombelTargetIds = [];
+}
+function confirmPindahRombel(){
+  const targetId = document.getElementById('prRombelTarget').value;
+  if(!targetId){ toast('Pilih rombel tujuan.','err'); return; }
+  const targetRombel = DB.get('rombel',[]).find(r=>r.id===targetId);
+  let list = DB.get('siswa', []);
+  const idsSet = new Set(pindahRombelTargetIds);
+  list = list.map(s=> idsSet.has(s.id) ? {...s, rombelId:targetId} : s);
+  DB.set('siswa', list);
+  toast(pindahRombelTargetIds.length+' siswa dipindahkan ke rombel '+(targetRombel?targetRombel.nama:'-')+'.','ok');
+  closePindahRombelModal();
+  clearSvSelection();
+  renderSiswaTable();
+}
+function bulkDeleteSiswa(){
+  const ids = getSelectedSiswaIds();
+  if(!ids.length){ toast('Pilih minimal satu siswa terlebih dahulu.','err'); return; }
+  confirmAction('Hapus Data Siswa Terpilih', 'Menghapus '+ids.length+' data siswa terpilih. Riwayat ketidakhadiran & pelanggaran tetap tersimpan namun tidak akan tertaut nama. Lanjutkan?', ()=>{
+    const idsSet = new Set(ids);
+    DB.set('siswa', DB.get('siswa',[]).filter(s=>!idsSet.has(s.id)));
+    clearSvSelection();
+    renderSiswaTable();
+    toast(ids.length+' data siswa dihapus.','ok');
+  });
 }
 function saveSiswa(){
   const nama = val('sv_nama');
   if(!nama){ toast('Nama siswa wajib diisi.','err'); return; }
-  const data = {nis:val('sv_nis'), nisn:val('sv_nisn'), nama, jk:document.getElementById('sv_jk').value, rombelId:document.getElementById('sv_rombel').value,
+  const nis = val('sv_nis');
+  if(nis){
+    const dup = DB.get('siswa', []).find(s=> s.nis && s.nis===nis && s.id!==editSvId);
+    if(dup){ toast('NIS "'+nis+'" sudah digunakan oleh siswa lain ('+dup.nama+'). Gunakan NIS yang berbeda.','err'); return; }
+  }
+  const data = {nis, nisn:val('sv_nisn'), nama, jk:document.getElementById('sv_jk').value, rombelId:document.getElementById('sv_rombel').value,
     ortu:val('sv_ortu'), telpOrtu:val('sv_telportu'), waOrtu:val('sv_waortu')};
   let list = DB.get('siswa', []);
   if(editSvId){
@@ -1374,6 +1550,7 @@ function editSv(id){
   document.getElementById('sv_ortu').value=s.ortu||''; document.getElementById('sv_telportu').value=s.telpOrtu||''; document.getElementById('sv_waortu').value=s.waOrtu||'';
   document.getElementById('svFormTitle').textContent='Ubah Data Siswa';
   switchTab('siswa','input');
+  openEditModal('#siswa-input .form-panel', resetSvForm);
 }
 function deleteSv(id){
   confirmAction('Hapus Data Siswa','Seluruh riwayat ketidakhadiran & pelanggaran siswa ini tetap tersimpan namun tidak akan tertaut nama. Lanjutkan?', ()=>{
@@ -1386,6 +1563,7 @@ function resetSvForm(){
   document.getElementById('sv_jk').value='L'; document.getElementById('sv_rombel').value=''; document.getElementById('sv_foto').value='';
   window._pendingFoto_sv=null;
   document.getElementById('svFormTitle').textContent='Tambah Siswa';
+  closeAnyEditModal();
 }
 function downloadSiswaTemplate(){
   const aoa = [
@@ -1421,18 +1599,22 @@ function importSiswaRows(rows){
   if(!rows.length){ toast('File kosong atau tidak sesuai format template.','err'); return; }
   const start = (rows[0][0]||'').toLowerCase().includes('nis') ? 1 : 0;
   const rombelList = DB.get('rombel', []);
-  let list = DB.get('siswa', []); let count=0, skippedRombel=0;
+  let list = DB.get('siswa', []); let count=0, skippedRombel=0, skippedDup=0;
+  const existingNis = new Set(list.filter(s=>s.nis).map(s=>s.nis));
   for(let i=start;i<rows.length;i++){
     const c = rows[i];
     if(!c[2]) continue;
+    const nis = c[0]||'';
+    if(nis && existingNis.has(nis)){ skippedDup++; continue; }
     const rombel = rombelList.find(r=>r.nama.toLowerCase()===(c[4]||'').toLowerCase());
     if(c[4] && !rombel) skippedRombel++;
-    list.push({id:uid('sv'), nis:c[0]||'', nisn:c[1]||'', nama:c[2], jk:(c[3]||'L').toUpperCase(), rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
+    list.push({id:uid('sv'), nis, nisn:c[1]||'', nama:c[2], jk:(c[3]||'L').toUpperCase(), rombelId: rombel?rombel.id:'', ortu:c[5]||'', telpOrtu:c[6]||'', waOrtu:c[7]||'', foto:''});
+    if(nis) existingNis.add(nis);
     count++;
   }
   DB.set('siswa', list);
   fillRombelFilter(); renderSiswaTable();
-  toast(count+' data siswa berhasil diimpor.'+(skippedRombel?(' '+skippedRombel+' baris rombel tidak ditemukan.'):''),'ok');
+  toast(count+' data siswa berhasil diimpor.'+(skippedRombel?(' '+skippedRombel+' baris rombel tidak ditemukan.'):'')+(skippedDup?(' '+skippedDup+' baris dilewati karena NIS sudah terdaftar.'):''),'ok');
 }
 
 /* =========================================================
@@ -1458,13 +1640,14 @@ function editKa(id){
   const k = DB.get('kodeAbsen',[]).find(x=>x.id===id); if(!k) return;
   editKaId=id; document.getElementById('ka_kode').value=k.kode; document.getElementById('ka_ket').value=k.ket; document.getElementById('ka_poin').value=k.poin||0;
   document.getElementById('kaFormTitle').textContent='Ubah Kode';
+  openEditModal('#page-kodeabsen .form-panel', resetKaForm);
 }
 function deleteKa(id){
   confirmAction('Hapus Kode','Data yang dihapus tidak dapat dikembalikan. Lanjutkan?', ()=>{
     DB.set('kodeAbsen', DB.get('kodeAbsen',[]).filter(k=>k.id!==id)); renderKaTable(); toast('Data dihapus.','ok');
   });
 }
-function resetKaForm(){ editKaId=null; document.getElementById('ka_kode').value=''; document.getElementById('ka_ket').value=''; document.getElementById('ka_poin').value='0'; document.getElementById('kaFormTitle').textContent='Tambah Kode'; }
+function resetKaForm(){ editKaId=null; document.getElementById('ka_kode').value=''; document.getElementById('ka_ket').value=''; document.getElementById('ka_poin').value='0'; document.getElementById('kaFormTitle').textContent='Tambah Kode'; closeAnyEditModal(); }
 
 /* =========================================================
    KODE PELANGGARAN
@@ -1491,28 +1674,40 @@ function editKp(id){
   editKpId=id; document.getElementById('kp_kode').value=k.kode; document.getElementById('kp_nama').value=k.nama;
   document.getElementById('kp_kategori').value=k.kategori; document.getElementById('kp_poin').value=k.poin;
   document.getElementById('kpFormTitle').textContent='Ubah Jenis Pelanggaran';
+  openEditModal('#page-kodepelanggaran .form-panel', resetKpForm);
 }
 function deleteKp(id){
   confirmAction('Hapus Jenis Pelanggaran','Data yang dihapus tidak dapat dikembalikan. Lanjutkan?', ()=>{
     DB.set('kodePelanggaran', DB.get('kodePelanggaran',[]).filter(k=>k.id!==id)); renderKpTable(); toast('Data dihapus.','ok');
   });
 }
-function resetKpForm(){ editKpId=null; document.getElementById('kp_kode').value=''; document.getElementById('kp_nama').value=''; document.getElementById('kp_kategori').value='Ringan'; document.getElementById('kp_poin').value='5'; document.getElementById('kpFormTitle').textContent='Tambah Jenis Pelanggaran'; }
+function resetKpForm(){ editKpId=null; document.getElementById('kp_kode').value=''; document.getElementById('kp_nama').value=''; document.getElementById('kp_kategori').value='Ringan'; document.getElementById('kp_poin').value='5'; document.getElementById('kpFormTitle').textContent='Tambah Jenis Pelanggaran'; closeAnyEditModal(); }
 
 /* =========================================================
    INPUT ABSENSI
 ========================================================= */
-function fillSiswaSelect(selectId, rombelId){
+function fillSiswaSelect(selectId, rombelId, query){
   const sel = document.getElementById(selectId);
+  const prevVal = sel.value;
   let list = DB.get('siswa', []);
   if(rombelId) list = list.filter(s=>s.rombelId===rombelId);
+  if(query){
+    const q = query.toLowerCase();
+    list = list.filter(s=> s.nama.toLowerCase().includes(q) || (s.nis||'').toLowerCase().includes(q));
+  }
   sel.innerHTML = list.map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('') || '<option value="">— Tidak ada siswa —</option>';
+  if(list.some(s=>s.id===prevVal)) sel.value = prevVal;
 }
 function initInputAbsensi(){
+  editAbId = null;
   document.getElementById('ab_tanggal').value = todayStr();
+  document.getElementById('ab_siswaSearch').value = '';
   fillRombelSelect('ab_rombel'); fillSiswaSelect('ab_siswa','');
   const kaSel = document.getElementById('ab_kode');
   kaSel.innerHTML = DB.get('kodeAbsen',[]).map(k=>'<option value="'+k.id+'">'+k.kode+' - '+k.ket+'</option>').join('');
+  document.getElementById('abFormTitle').textContent = 'Form Ketidakhadiran';
+  document.getElementById('abSaveBtn').textContent = '💾 Simpan Ketidakhadiran';
+  document.getElementById('abCancelBtn').style.display = 'none';
   document.getElementById('abFilterDate').value='';
   renderAbsensiTable();
 }
@@ -1522,6 +1717,14 @@ function saveAbsensi(){
   const tanggal = document.getElementById('ab_tanggal').value;
   if(!siswaId || !kodeAbsenId || !tanggal){ toast('Lengkapi seluruh isian.','err'); return; }
   const ket = val('ab_ket');
+  if(editAbId){
+    const list = DB.get('absensi', []).map(a=> a.id===editAbId ? {...a, tanggal, siswaId, kodeAbsenId, ket} : a);
+    DB.set('absensi', list);
+    resetAbForm();
+    renderAbsensiTable();
+    toast('Perubahan data ketidakhadiran disimpan.','ok');
+    return;
+  }
   const rec = {id:uid('ab'), tanggal, siswaId, kodeAbsenId, ket, inputBy:currentUser.username, waSent:false};
   const list = DB.get('absensi', []); list.push(rec); DB.set('absensi', list);
   if(document.getElementById('ab_wa').checked) sendWaForAbsen(rec);
@@ -1539,8 +1742,38 @@ function renderAbsensiTable(){
   document.getElementById('abTable').innerHTML = list.length ? list.map(a=>{
     const s = siswaMap[a.siswaId]; const r = s?rombelMap[s.rombelId]:null; const k = kaMap[a.kodeAbsenId];
     return '<tr><td>'+fmtDate(a.tanggal)+'</td><td>'+(s?s.nama:'<i>dihapus</i>')+'</td><td>'+(r?r.nama:'-')+'</td><td>'+pillAbsen(k?k.kode:'-')+' '+(k?k.ket:'')+'</td><td class="kpoint">'+(k?(k.poin||0):0)+'</td><td>'+(a.ket||'-')+'</td><td>'+(a.waSent?'<span class="pill pill-green">Terkirim</span>':'<span class="pill pill-gray">-</span>')+'</td>'+
-    '<td><button class="btn btn-sm btn-red" onclick="deleteAbsensi(\''+a.id+'\')">Hapus</button></td></tr>';
+    '<td><button class="btn btn-sm" onclick="editAb(\''+a.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deleteAbsensi(\''+a.id+'\')">Hapus</button></td></tr>';
   }).join('') : '<tr class="empty-row"><td colspan="8">Belum ada data</td></tr>';
+}
+let editAbId = null;
+function editAb(id){
+  const a = DB.get('absensi',[]).find(x=>x.id===id); if(!a) return;
+  editAbId = id;
+  const s = DB.get('siswa',[]).find(x=>x.id===a.siswaId);
+  fillRombelSelect('ab_rombel');
+  document.getElementById('ab_tanggal').value = a.tanggal;
+  document.getElementById('ab_rombel').value = s ? (s.rombelId||'') : '';
+  document.getElementById('ab_siswaSearch').value = '';
+  fillSiswaSelect('ab_siswa', s ? s.rombelId : '');
+  document.getElementById('ab_siswa').value = a.siswaId;
+  document.getElementById('ab_kode').value = a.kodeAbsenId;
+  document.getElementById('ab_ket').value = a.ket || '';
+  document.getElementById('abFormTitle').textContent = 'Ubah Data Ketidakhadiran';
+  document.getElementById('abSaveBtn').textContent = '💾 Simpan Perubahan';
+  document.getElementById('abCancelBtn').style.display = '';
+  openEditModal('#page-inputabsensi .form-panel', resetAbForm);
+}
+function resetAbForm(){
+  editAbId = null;
+  document.getElementById('ab_tanggal').value = todayStr();
+  document.getElementById('ab_siswaSearch').value = '';
+  fillRombelSelect('ab_rombel'); document.getElementById('ab_rombel').value='';
+  fillSiswaSelect('ab_siswa','');
+  document.getElementById('ab_ket').value='';
+  document.getElementById('abFormTitle').textContent = 'Form Ketidakhadiran';
+  document.getElementById('abSaveBtn').textContent = '💾 Simpan Ketidakhadiran';
+  document.getElementById('abCancelBtn').style.display = 'none';
+  closeAnyEditModal();
 }
 function deleteAbsensi(id){
   confirmAction('Hapus Data Ketidakhadiran','Lanjutkan menghapus data ini?', ()=>{
@@ -1552,11 +1785,16 @@ function deleteAbsensi(id){
    INPUT PELANGGARAN
 ========================================================= */
 function initInputPelanggaran(){
+  editPlId = null;
   document.getElementById('pl_tanggal').value = todayStr();
+  document.getElementById('pl_siswaSearch').value='';
   fillRombelSelect('pl_rombel'); fillSiswaSelect('pl_siswa','');
   const kpSel = document.getElementById('pl_kode');
   kpSel.innerHTML = DB.get('kodePelanggaran',[]).map(k=>'<option value="'+k.id+'" data-poin="'+k.poin+'">'+k.kode+' - '+k.nama+' ('+k.kategori+')</option>').join('');
   updatePoinPreview();
+  document.getElementById('plFormTitle').textContent = 'Form Pelanggaran';
+  document.getElementById('plSaveBtn').textContent = '💾 Simpan Pelanggaran';
+  document.getElementById('plCancelBtn').style.display = 'none';
   document.getElementById('plFilterDate').value='';
   renderPelanggaranTable();
 }
@@ -1572,6 +1810,14 @@ function savePelanggaran(){
   if(!siswaId || !kodePelanggaranId || !tanggal){ toast('Lengkapi seluruh isian.','err'); return; }
   const poin = parseInt(document.getElementById('pl_poin').value||'0',10);
   const ket = val('pl_ket');
+  if(editPlId){
+    const list = DB.get('pelanggaran', []).map(p=> p.id===editPlId ? {...p, tanggal, siswaId, kodePelanggaranId, poin, ket} : p);
+    DB.set('pelanggaran', list);
+    resetPlForm();
+    renderPelanggaranTable();
+    toast('Perubahan data pelanggaran disimpan.','ok');
+    return;
+  }
   const rec = {id:uid('pl'), tanggal, siswaId, kodePelanggaranId, poin, ket, inputBy:currentUser.username, waSent:false};
   const list = DB.get('pelanggaran', []); list.push(rec); DB.set('pelanggaran', list);
   if(document.getElementById('pl_wa').checked) sendWaForPelanggaran(rec);
@@ -1589,8 +1835,40 @@ function renderPelanggaranTable(){
   document.getElementById('plTable').innerHTML = list.length ? list.map(p=>{
     const s = siswaMap[p.siswaId]; const r = s?rombelMap[s.rombelId]:null; const k = kpMap[p.kodePelanggaranId];
     return '<tr><td>'+fmtDate(p.tanggal)+'</td><td>'+(s?s.nama:'<i>dihapus</i>')+'</td><td>'+(r?r.nama:'-')+'</td><td>'+(k?k.nama:'-')+'</td><td>'+pillKategori(k?k.kategori:'-')+'</td><td class="kpoint">'+p.poin+'</td><td>'+(p.waSent?'<span class="pill pill-green">Terkirim</span>':'<span class="pill pill-gray">-</span>')+'</td>'+
-    '<td><button class="btn btn-sm btn-red" onclick="deletePelanggaran(\''+p.id+'\')">Hapus</button></td></tr>';
+    '<td><button class="btn btn-sm" onclick="editPl(\''+p.id+'\')">Ubah</button> <button class="btn btn-sm btn-red" onclick="deletePelanggaran(\''+p.id+'\')">Hapus</button></td></tr>';
   }).join('') : '<tr class="empty-row"><td colspan="8">Belum ada data</td></tr>';
+}
+let editPlId = null;
+function editPl(id){
+  const p = DB.get('pelanggaran',[]).find(x=>x.id===id); if(!p) return;
+  editPlId = id;
+  const s = DB.get('siswa',[]).find(x=>x.id===p.siswaId);
+  fillRombelSelect('pl_rombel');
+  document.getElementById('pl_tanggal').value = p.tanggal;
+  document.getElementById('pl_rombel').value = s ? (s.rombelId||'') : '';
+  document.getElementById('pl_siswaSearch').value = '';
+  fillSiswaSelect('pl_siswa', s ? s.rombelId : '');
+  document.getElementById('pl_siswa').value = p.siswaId;
+  document.getElementById('pl_kode').value = p.kodePelanggaranId;
+  updatePoinPreview();
+  document.getElementById('pl_ket').value = p.ket || '';
+  document.getElementById('plFormTitle').textContent = 'Ubah Data Pelanggaran';
+  document.getElementById('plSaveBtn').textContent = '💾 Simpan Perubahan';
+  document.getElementById('plCancelBtn').style.display = '';
+  openEditModal('#page-inputpelanggaran .form-panel', resetPlForm);
+}
+function resetPlForm(){
+  editPlId = null;
+  document.getElementById('pl_tanggal').value = todayStr();
+  fillRombelSelect('pl_rombel'); document.getElementById('pl_rombel').value='';
+  document.getElementById('pl_siswaSearch').value = '';
+  fillSiswaSelect('pl_siswa','');
+  updatePoinPreview();
+  document.getElementById('pl_ket').value='';
+  document.getElementById('plFormTitle').textContent = 'Form Pelanggaran';
+  document.getElementById('plSaveBtn').textContent = '💾 Simpan Pelanggaran';
+  document.getElementById('plCancelBtn').style.display = 'none';
+  closeAnyEditModal();
 }
 function deletePelanggaran(id){
   confirmAction('Hapus Data Pelanggaran','Lanjutkan menghapus data ini?', ()=>{
@@ -1658,7 +1936,7 @@ function initRekap(){
   const siswaSel = document.getElementById('rk_siswa');
   siswaSel.innerHTML = DB.get('siswa',[]).map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('') || '<option value="">— Belum ada siswa —</option>';
   const rombelSel = document.getElementById('rk_rombel');
-  rombelSel.innerHTML = DB.get('rombel',[]).map(r=>'<option value="'+r.id+'">'+r.nama+'</option>').join('') || '<option value="">— Belum ada rombel —</option>';
+  rombelSel.innerHTML = '<option value="">— Semua Kelas —</option>'+DB.get('rombel',[]).map(r=>'<option value="'+r.id+'">'+r.nama+'</option>').join('');
   handleRekapModeChange();
   setPeriodPreset('bulanan');
   document.getElementById('rk_output').innerHTML='';
@@ -1705,6 +1983,10 @@ function resolveRekapContext(){
     return {mode, siswaList:[s], kelasLabel:'Siswa: '+s.nama+'   |   Kelas: '+(rombel?rombel.nama:'-'), waliInfo};
   } else {
     const rombelId = document.getElementById('rk_rombel').value;
+    if(!rombelId){
+      const siswaList = DB.get('siswa',[]).sort((a,b)=>a.nama.localeCompare(b.nama));
+      return {mode, siswaList, kelasLabel:'Kelas: Semua Kelas', waliInfo:null, allKelas:true};
+    }
     const rombel = DB.get('rombel',[]).find(r=>r.id===rombelId);
     if(!rombel) return null;
     const siswaList = DB.get('siswa',[]).filter(s=>s.rombelId===rombelId).sort((a,b)=>a.nama.localeCompare(b.nama));
@@ -1733,6 +2015,8 @@ function renderRekapLengkap(){
   const ctx = resolveRekapContext();
   if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
   const {mode, siswaList, kelasLabel, waliInfo} = ctx;
+  const showRombelCol = !!ctx.allKelas;
+  const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
   const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
   const inRange = t => (!start || t>=start) && (!end || t<=end);
   const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
@@ -1742,10 +2026,11 @@ function renderRekapLengkap(){
   const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
   const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
   const siswaMap = Object.fromEntries(siswaList.map(s=>[s.id,s]));
+  const rombelNamaOf = s => s && rombelMap[s.rombelId] ? rombelMap[s.rombelId].nama : '-';
 
   let rows = [
-    ...absensi.map(a=>{ const k=kaMap[a.kodeAbsenId]; return {tanggal:a.tanggal, siswa:siswaMap[a.siswaId], jenis:'Ketidakhadiran', ket:(k?(k.kode+' - '+k.ket):'-')+(a.ket?(' — '+a.ket):''), poin:k?(k.poin||0):0}; }),
-    ...pelanggaran.map(p=>{ const k=kpMap[p.kodePelanggaranId]; return {tanggal:p.tanggal, siswa:siswaMap[p.siswaId], jenis:'Pelanggaran', ket:(k?(k.kode+' - '+k.nama):'-')+(p.ket?(' — '+p.ket):''), poin:p.poin||0}; })
+    ...absensi.map(a=>{ const k=kaMap[a.kodeAbsenId]; const sw=siswaMap[a.siswaId]; return {tanggal:a.tanggal, siswa:sw, rombelNama:rombelNamaOf(sw), jenis:'Ketidakhadiran', ket:(k?(k.kode+' - '+k.ket):'-')+(a.ket?(' — '+a.ket):''), poin:k?(k.poin||0):0}; }),
+    ...pelanggaran.map(p=>{ const k=kpMap[p.kodePelanggaranId]; const sw=siswaMap[p.siswaId]; return {tanggal:p.tanggal, siswa:sw, rombelNama:rombelNamaOf(sw), jenis:'Pelanggaran', ket:(k?(k.kode+' - '+k.nama):'-')+(p.ket?(' — '+p.ket):''), poin:p.poin||0}; })
   ].sort((a,b)=>{
     if(a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
     const an = a.siswa?a.siswa.nama:'', bn = b.siswa?b.siswa.nama:'';
@@ -1753,13 +2038,13 @@ function renderRekapLengkap(){
   });
   const totalPoin = rows.reduce((s,r)=>s+(r.poin||0),0);
   const showSiswaCol = mode==='kelas';
-  rkMeta = {format:'lengkap', mode, kelasLabel, periodeLabel, totalPoin, waliInfo};
+  rkMeta = {format:'lengkap', mode, kelasLabel, periodeLabel, totalPoin, waliInfo, showRombelCol};
 
   let html = '<div id="rk_wrap">';
   html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Ketidakhadiran: <b>'+absensi.length+'</b> &nbsp;•&nbsp; Pelanggaran: <b>'+pelanggaran.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoin+'</b></p>';
-  html += '<table id="rk_table"><thead><tr><th>No</th><th>Tanggal</th>'+(showSiswaCol?'<th>Nama Siswa</th>':'')+'<th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
-  const colCount = showSiswaCol ? 6 : 5;
-  html += rows.length ? rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(r.tanggal)+'</td>'+(showSiswaCol?'<td>'+(r.siswa?r.siswa.nama:'-')+'</td>':'')+'<td>'+r.jenis+'</td><td>'+r.ket+'</td><td class="kpoint">'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Tidak ada data pada periode ini</td></tr>';
+  html += '<table id="rk_table"><thead><tr><th>No</th><th>Tanggal</th>'+(showSiswaCol?'<th>Nama Siswa</th>':'')+(showRombelCol?'<th>Rombel</th>':'')+'<th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
+  const colCount = 5 + (showSiswaCol?1:0) + (showRombelCol?1:0);
+  html += rows.length ? rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(r.tanggal)+'</td>'+(showSiswaCol?'<td>'+(r.siswa?r.siswa.nama:'-')+'</td>':'')+(showRombelCol?'<td>'+r.rombelNama+'</td>':'')+'<td>'+r.jenis+'</td><td>'+r.ket+'</td><td class="kpoint">'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Tidak ada data pada periode ini</td></tr>';
   if(rows.length){
     html += '<tr><td colspan="'+(colCount-1)+'" style="text-align:right;font-weight:700;">Total Poin</td><td class="kpoint">'+totalPoin+'</td></tr>';
   }
@@ -1776,6 +2061,8 @@ function renderRekapRingkas(){
   const ctx = resolveRekapContext();
   if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
   const {mode, siswaList, kelasLabel, waliInfo} = ctx;
+  const showRombelCol = !!ctx.allKelas;
+  const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
   const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
   const inRange = t => (!start || t>=start) && (!end || t<=end);
   const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
@@ -1803,24 +2090,26 @@ function renderRekapRingkas(){
   });
   const rowsData = siswaList.map(s=>summary[s.id]);
   const totalPoinAll = rowsData.reduce((sum,r)=>sum + r.poinAbsen + r.poinPelanggaran, 0);
-  rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList};
+  rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList, showRombelCol};
 
   let html = '<div id="rk_wrap">';
   html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Jumlah Siswa: <b>'+siswaList.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoinAll+'</b></p>';
-  html += '<table id="rk_table"><thead><tr><th rowspan="2">No</th><th rowspan="2">Nama</th><th colspan="'+Math.max(kodeAbsenList.length,1)+'">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Pelanggaran</th><th rowspan="2">Total Poin</th></tr><tr>'+
+  html += '<table id="rk_table"><thead><tr><th rowspan="2">No</th><th rowspan="2">Nama</th>'+(showRombelCol?'<th rowspan="2">Rombel</th>':'')+'<th colspan="'+Math.max(kodeAbsenList.length,1)+'">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Pelanggaran</th><th rowspan="2">Total Poin</th></tr><tr>'+
     (kodeAbsenList.length ? kodeAbsenList.map(k=>'<th>'+k.kode+'</th>').join('') : '<th>-</th>')+
   '</tr></thead><tbody>';
-  const colCount = 4 + Math.max(kodeAbsenList.length,1);
+  const colCount = (showRombelCol?5:4) + Math.max(kodeAbsenList.length,1);
   html += rowsData.length ? rowsData.map((r,i)=>{
     const total = r.poinAbsen + r.poinPelanggaran;
+    const rombelNama = rombelMap[r.siswa.rombelId] ? rombelMap[r.siswa.rombelId].nama : '-';
     return '<tr><td>'+(i+1)+'</td><td style="text-align:left;">'+r.siswa.nama+'</td>'+
+      (showRombelCol?'<td>'+rombelNama+'</td>':'')+
       (kodeAbsenList.length ? kodeAbsenList.map(k=>'<td>'+(r.counts[k.id]||0)+'</td>').join('') : '<td>-</td>')+
       '<td class="kpoint">'+r.poinPelanggaran+'</td><td class="kpoint">'+total+'</td></tr>';
   }).join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Belum ada siswa terdaftar</td></tr>';
   if(rowsData.length){
     const sumCounts = kodeAbsenList.map(k=>rowsData.reduce((s,r)=>s+(r.counts[k.id]||0),0));
     const sumPelanggaran = rowsData.reduce((s,r)=>s+r.poinPelanggaran,0);
-    html += '<tr><td colspan="2" style="text-align:right;font-weight:700;">Jumlah</td>'+
+    html += '<tr><td colspan="'+(showRombelCol?3:2)+'" style="text-align:right;font-weight:700;">Jumlah</td>'+
       (kodeAbsenList.length ? sumCounts.map(v=>'<td style="font-weight:700;">'+v+'</td>').join('') : '<td></td>')+
       '<td class="kpoint">'+sumPelanggaran+'</td><td class="kpoint">'+totalPoinAll+'</td></tr>';
   }
@@ -1853,17 +2142,20 @@ function exportRekapExcel(){
 
   if(rkMeta.format==='ringkas'){
     const kodeList = rkMeta.kodeAbsenList && rkMeta.kodeAbsenList.length ? rkMeta.kodeAbsenList : [{kode:'-'}];
-    colCount = 4 + kodeList.length;
+    const showRombelCol = !!rkMeta.showRombelCol;
+    colCount = 4 + kodeList.length + (showRombelCol?1:0);
     const headerStartRow = aoa.length;
-    const headerRow1 = ['No','Nama','Jumlah Ketidakhadiran', ...kodeList.slice(1).map(()=>''), 'Poin Pelanggaran','Total Poin'];
-    const headerRow2 = ['','', ...kodeList.map(k=>k.kode), '', ''];
+    const headerRow1 = ['No','Nama', ...(showRombelCol?['Rombel']:[]), 'Jumlah Ketidakhadiran', ...kodeList.slice(1).map(()=>''), 'Poin Pelanggaran','Total Poin'];
+    const headerRow2 = ['','', ...(showRombelCol?['']:[]), ...kodeList.map(k=>k.kode), '', ''];
     aoa.push(headerRow1, headerRow2);
+    const baseCol = showRombelCol ? 3 : 2;
     merges.push(
       {s:{r:headerStartRow,c:0}, e:{r:headerStartRow+1,c:0}},
       {s:{r:headerStartRow,c:1}, e:{r:headerStartRow+1,c:1}},
-      {s:{r:headerStartRow,c:2}, e:{r:headerStartRow,c:1+kodeList.length}},
-      {s:{r:headerStartRow,c:2+kodeList.length}, e:{r:headerStartRow+1,c:2+kodeList.length}},
-      {s:{r:headerStartRow,c:3+kodeList.length}, e:{r:headerStartRow+1,c:3+kodeList.length}}
+      ...(showRombelCol ? [{s:{r:headerStartRow,c:2}, e:{r:headerStartRow+1,c:2}}] : []),
+      {s:{r:headerStartRow,c:baseCol}, e:{r:headerStartRow,c:baseCol-1+kodeList.length}},
+      {s:{r:headerStartRow,c:baseCol+kodeList.length}, e:{r:headerStartRow+1,c:baseCol+kodeList.length}},
+      {s:{r:headerStartRow,c:baseCol+1+kodeList.length}, e:{r:headerStartRow+1,c:baseCol+1+kodeList.length}}
     );
     table.querySelectorAll('tbody tr').forEach(tr=>{
       aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
@@ -1982,6 +2274,7 @@ function editUs(id){
   editUsId=id; document.getElementById('us_nama').value=u.nama; document.getElementById('us_username').value=u.username;
   document.getElementById('us_password').value=u.password; document.getElementById('us_role').value=u.role;
   document.getElementById('usFormTitle').textContent='Ubah Akun';
+  openEditModal('#page-users .form-panel', resetUsForm);
 }
 function deleteUs(id){
   if(id===currentUser.id){ toast('Tidak dapat menghapus akun yang sedang digunakan.','err'); return; }
@@ -1989,7 +2282,7 @@ function deleteUs(id){
     DB.set('users', DB.get('users',[]).filter(u=>u.id!==id)); renderUsTable(); toast('Akun dihapus.','ok');
   });
 }
-function resetUsForm(){ editUsId=null; ['us_nama','us_username','us_password'].forEach(id=>document.getElementById(id).value=''); document.getElementById('us_role').value='admin'; document.getElementById('usFormTitle').textContent='Tambah Akun'; }
+function resetUsForm(){ editUsId=null; ['us_nama','us_username','us_password'].forEach(id=>document.getElementById(id).value=''); document.getElementById('us_role').value='admin'; document.getElementById('usFormTitle').textContent='Tambah Akun'; closeAnyEditModal(); }
 
 /* =========================================================
    TAB SWITCH (Guru / Siswa import tabs)
