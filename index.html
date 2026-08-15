@@ -399,6 +399,16 @@ tbody tr:hover{background:#fbfcff;}
       </div>
       <div class="grid g4" id="dashStats"></div>
       <div class="grid g2" style="margin-top:18px;">
+        <div class="stat" style="--accent:var(--red-600);">
+          <div class="lbl">Kelas Paling Banyak Tidak Hadir</div>
+          <div id="dashTopAbsen"></div>
+        </div>
+        <div class="stat" style="--accent:var(--amber-600);">
+          <div class="lbl">Kelas Paling Banyak Pelanggaran</div>
+          <div id="dashTopPel"></div>
+        </div>
+      </div>
+      <div class="grid g2" style="margin-top:18px;">
         <div class="card">
           <h3>Ketidakhadiran Terbaru</h3>
           <div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Ket.</th></tr></thead><tbody id="dashAbsenRecent"></tbody></table></div>
@@ -657,6 +667,11 @@ tbody tr:hover{background:#fbfcff;}
           </select>
           <select id="rk_siswa" style="min-width:230px;"></select>
           <select id="rk_rombel" style="min-width:200px;display:none;"></select>
+          <select id="rk_jenis" style="font-weight:600;">
+            <option value="keduanya">Ketidakhadiran &amp; Pelanggaran</option>
+            <option value="absensi">Ketidakhadiran Saja</option>
+            <option value="pelanggaran">Pelanggaran Saja</option>
+          </select>
           <select id="rk_format" style="font-weight:600;">
             <option value="lengkap">Model: Lengkap</option>
             <option value="ringkas">Model: Ringkas</option>
@@ -1135,6 +1150,22 @@ function renderDashboard(){
   const siswaMap = Object.fromEntries(siswa.map(s=>[s.id,s]));
   const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
   const kpMap = Object.fromEntries(DB.get('kodePelanggaran',[]).map(k=>[k.id,k]));
+
+  const rombelList = DB.get('rombel', []);
+  const rombelMap = Object.fromEntries(rombelList.map(r=>[r.id,r]));
+  const absenByRombel = {}, pelByRombel = {};
+  absensi.forEach(a=>{ const s=siswaMap[a.siswaId]; if(!s||!s.rombelId) return; absenByRombel[s.rombelId]=(absenByRombel[s.rombelId]||0)+1; });
+  pelanggaran.forEach(p=>{ const s=siswaMap[p.siswaId]; if(!s||!s.rombelId) return; pelByRombel[s.rombelId]=(pelByRombel[s.rombelId]||0)+1; });
+  const topAbsenEntry = Object.entries(absenByRombel).sort((a,b)=>b[1]-a[1])[0];
+  const topPelEntry = Object.entries(pelByRombel).sort((a,b)=>b[1]-a[1])[0];
+  const topAbsenRombel = topAbsenEntry ? rombelMap[topAbsenEntry[0]] : null;
+  const topPelRombel = topPelEntry ? rombelMap[topPelEntry[0]] : null;
+  document.getElementById('dashTopAbsen').innerHTML = topAbsenRombel
+    ? '<div class="val">'+topAbsenRombel.nama+'</div><div class="sub">'+topAbsenEntry[1]+' kali tidak hadir (akumulasi)</div>'
+    : '<div class="sub">Belum ada data ketidakhadiran</div>';
+  document.getElementById('dashTopPel').innerHTML = topPelRombel
+    ? '<div class="val">'+topPelRombel.nama+'</div><div class="sub">'+topPelEntry[1]+' kali pelanggaran (akumulasi)</div>'
+    : '<div class="sub">Belum ada data pelanggaran</div>';
 
   const recentAbsen = [...absensi].sort((a,b)=>b.tanggal.localeCompare(a.tanggal)).slice(0,6);
   document.getElementById('dashAbsenRecent').innerHTML = recentAbsen.length ? recentAbsen.map(a=>{
@@ -1933,6 +1964,7 @@ let rkMeta = {};
 function initRekap(){
   document.getElementById('rk_mode').value='personal';
   document.getElementById('rk_format').value='lengkap';
+  document.getElementById('rk_jenis').value='keduanya';
   const siswaSel = document.getElementById('rk_siswa');
   siswaSel.innerHTML = DB.get('siswa',[]).map(s=>'<option value="'+s.id+'">'+s.nama+(s.nis?' ('+s.nis+')':'')+'</option>').join('') || '<option value="">— Belum ada siswa —</option>';
   const rombelSel = document.getElementById('rk_rombel');
@@ -2016,6 +2048,7 @@ function renderRekapLengkap(){
   if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
   const {mode, siswaList, kelasLabel, waliInfo} = ctx;
   const showRombelCol = !!ctx.allKelas;
+  const jenis = document.getElementById('rk_jenis').value;
   const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
   const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
   const inRange = t => (!start || t>=start) && (!end || t<=end);
@@ -2023,8 +2056,8 @@ function renderRekapLengkap(){
   const kaMap = Object.fromEntries(DB.get('kodeAbsen',[]).map(k=>[k.id,k]));
   const kpMap = Object.fromEntries(DB.get('kodePelanggaran',[]).map(k=>[k.id,k]));
   const siswaIdSet = new Set(siswaList.map(s=>s.id));
-  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
-  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
+  const absensi = jenis==='pelanggaran' ? [] : DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
+  const pelanggaran = jenis==='absensi' ? [] : DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
   const siswaMap = Object.fromEntries(siswaList.map(s=>[s.id,s]));
   const rombelNamaOf = s => s && rombelMap[s.rombelId] ? rombelMap[s.rombelId].nama : '-';
 
@@ -2038,10 +2071,14 @@ function renderRekapLengkap(){
   });
   const totalPoin = rows.reduce((s,r)=>s+(r.poin||0),0);
   const showSiswaCol = mode==='kelas';
-  rkMeta = {format:'lengkap', mode, kelasLabel, periodeLabel, totalPoin, waliInfo, showRombelCol};
+  rkMeta = {format:'lengkap', mode, kelasLabel, periodeLabel, totalPoin, waliInfo, showRombelCol, jenis};
 
+  let infoParts = ['<b>'+kelasLabel+'</b>', 'Periode: '+periodeLabel];
+  if(jenis!=='pelanggaran') infoParts.push('Ketidakhadiran: <b>'+absensi.length+'</b>');
+  if(jenis!=='absensi') infoParts.push('Pelanggaran: <b>'+pelanggaran.length+'</b>');
+  infoParts.push('Total Poin: <b>'+totalPoin+'</b>');
   let html = '<div id="rk_wrap">';
-  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Ketidakhadiran: <b>'+absensi.length+'</b> &nbsp;•&nbsp; Pelanggaran: <b>'+pelanggaran.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoin+'</b></p>';
+  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;">'+infoParts.join(' &nbsp;•&nbsp; ')+'</p>';
   html += '<table id="rk_table"><thead><tr><th>No</th><th>Tanggal</th>'+(showSiswaCol?'<th>Nama Siswa</th>':'')+(showRombelCol?'<th>Rombel</th>':'')+'<th>Jenis</th><th>Keterangan</th><th>Poin</th></tr></thead><tbody>';
   const colCount = 5 + (showSiswaCol?1:0) + (showRombelCol?1:0);
   html += rows.length ? rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(r.tanggal)+'</td>'+(showSiswaCol?'<td>'+(r.siswa?r.siswa.nama:'-')+'</td>':'')+(showRombelCol?'<td>'+r.rombelNama+'</td>':'')+'<td>'+r.jenis+'</td><td>'+r.ket+'</td><td class="kpoint">'+r.poin+'</td></tr>').join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Tidak ada data pada periode ini</td></tr>';
@@ -2061,58 +2098,135 @@ function renderRekapRingkas(){
   const ctx = resolveRekapContext();
   if(!ctx){ document.getElementById('rk_output').innerHTML='<p class="helptext">Data siswa/rombel belum tersedia. Silakan pilih terlebih dahulu.</p>'; document.getElementById('rk_exports').style.display='none'; return; }
   const {mode, siswaList, kelasLabel, waliInfo} = ctx;
-  const showRombelCol = !!ctx.allKelas;
-  const rombelMap = Object.fromEntries(DB.get('rombel',[]).map(r=>[r.id,r]));
+  const isPerClass = !!ctx.allKelas;
+  const jenis = document.getElementById('rk_jenis').value;
+  const showAbsenCols = jenis !== 'pelanggaran';
+  const showPelCols = jenis !== 'absensi';
+  const rombelListAll = DB.get('rombel', []);
   const start = document.getElementById('rk_start').value, end = document.getElementById('rk_end').value;
   const inRange = t => (!start || t>=start) && (!end || t<=end);
   const periodeLabel = (start?fmtDate(start):'Awal') + ' s.d. ' + (end?fmtDate(end):'Akhir');
   const kodeAbsenList = DB.get('kodeAbsen', []);
   const kaMap = Object.fromEntries(kodeAbsenList.map(k=>[k.id,k]));
   const siswaIdSet = new Set(siswaList.map(s=>s.id));
-  const absensi = DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId));
-  const pelanggaran = DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId));
+  const siswaMap = Object.fromEntries(siswaList.map(s=>[s.id,s]));
+  const absensi = showAbsenCols ? DB.get('absensi',[]).filter(a=>inRange(a.tanggal) && siswaIdSet.has(a.siswaId)) : [];
+  const pelanggaran = showPelCols ? DB.get('pelanggaran',[]).filter(p=>inRange(p.tanggal) && siswaIdSet.has(p.siswaId)) : [];
 
-  const summary = {};
-  siswaList.forEach(s=>{
-    summary[s.id] = {siswa:s, counts:{}, poinAbsen:0, poinPelanggaran:0};
-    kodeAbsenList.forEach(k=> summary[s.id].counts[k.id]=0);
-  });
-  absensi.forEach(a=>{
-    const row = summary[a.siswaId]; if(!row) return;
-    if(row.counts[a.kodeAbsenId]===undefined) return;
-    row.counts[a.kodeAbsenId]++;
-    const k = kaMap[a.kodeAbsenId];
-    row.poinAbsen += k ? (k.poin||0) : 0;
-  });
-  pelanggaran.forEach(p=>{
-    const row = summary[p.siswaId]; if(!row) return;
-    row.poinPelanggaran += (p.poin||0);
-  });
-  const rowsData = siswaList.map(s=>summary[s.id]);
-  const totalPoinAll = rowsData.reduce((sum,r)=>sum + r.poinAbsen + r.poinPelanggaran, 0);
-  rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList, showRombelCol};
+  let rowsData, totalPoinAll, colCount;
+  let headRow1Cells, headRow2Html;
 
-  let html = '<div id="rk_wrap">';
-  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;"><b>'+kelasLabel+'</b> &nbsp;•&nbsp; Periode: '+periodeLabel+' &nbsp;•&nbsp; Jumlah Siswa: <b>'+siswaList.length+'</b> &nbsp;•&nbsp; Total Poin: <b>'+totalPoinAll+'</b></p>';
-  html += '<table id="rk_table"><thead><tr><th rowspan="2">No</th><th rowspan="2">Nama</th>'+(showRombelCol?'<th rowspan="2">Rombel</th>':'')+'<th colspan="'+Math.max(kodeAbsenList.length,1)+'">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Pelanggaran</th><th rowspan="2">Total Poin</th></tr><tr>'+
-    (kodeAbsenList.length ? kodeAbsenList.map(k=>'<th>'+k.kode+'</th>').join('') : '<th>-</th>')+
-  '</tr></thead><tbody>';
-  const colCount = (showRombelCol?5:4) + Math.max(kodeAbsenList.length,1);
-  html += rowsData.length ? rowsData.map((r,i)=>{
-    const total = r.poinAbsen + r.poinPelanggaran;
-    const rombelNama = rombelMap[r.siswa.rombelId] ? rombelMap[r.siswa.rombelId].nama : '-';
-    return '<tr><td>'+(i+1)+'</td><td style="text-align:left;">'+r.siswa.nama+'</td>'+
-      (showRombelCol?'<td>'+rombelNama+'</td>':'')+
-      (kodeAbsenList.length ? kodeAbsenList.map(k=>'<td>'+(r.counts[k.id]||0)+'</td>').join('') : '<td>-</td>')+
-      '<td class="kpoint">'+r.poinPelanggaran+'</td><td class="kpoint">'+total+'</td></tr>';
-  }).join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Belum ada siswa terdaftar</td></tr>';
-  if(rowsData.length){
-    const sumCounts = kodeAbsenList.map(k=>rowsData.reduce((s,r)=>s+(r.counts[k.id]||0),0));
-    const sumPelanggaran = rowsData.reduce((s,r)=>s+r.poinPelanggaran,0);
-    html += '<tr><td colspan="'+(showRombelCol?3:2)+'" style="text-align:right;font-weight:700;">Jumlah</td>'+
-      (kodeAbsenList.length ? sumCounts.map(v=>'<td style="font-weight:700;">'+v+'</td>').join('') : '<td></td>')+
-      '<td class="kpoint">'+sumPelanggaran+'</td><td class="kpoint">'+totalPoinAll+'</td></tr>';
+  if(isPerClass){
+    /* Ringkasan per Kelas (Semua Kelas): No, Kelas, Ketidakhadiran per kode, Jumlah Ketidakhadiran,
+       Poin Ketidakhadiran, Jumlah Pelanggaran, Total Poin Pelanggaran (poin ketidakhadiran + poin pelanggaran) */
+    const summary = {};
+    rombelListAll.forEach(r=>{ summary[r.id] = {rombel:r, counts:{}, poinKetidakhadiran:0, jumlahPelanggaran:0, poinPelanggaran:0}; kodeAbsenList.forEach(k=>summary[r.id].counts[k.id]=0); });
+    absensi.forEach(a=>{
+      const s = siswaMap[a.siswaId]; if(!s || !s.rombelId) return;
+      const row = summary[s.rombelId]; if(!row || row.counts[a.kodeAbsenId]===undefined) return;
+      row.counts[a.kodeAbsenId]++;
+      const k = kaMap[a.kodeAbsenId];
+      row.poinKetidakhadiran += k ? (k.poin||0) : 0;
+    });
+    pelanggaran.forEach(p=>{
+      const s = siswaMap[p.siswaId]; if(!s || !s.rombelId) return;
+      const row = summary[s.rombelId]; if(!row) return;
+      row.jumlahPelanggaran++;
+      row.poinPelanggaran += (p.poin||0);
+    });
+    rowsData = rombelListAll.map(r=>{
+      const row = summary[r.id];
+      row.jumlahKetidakhadiran = Object.values(row.counts).reduce((a,b)=>a+b,0);
+      row.totalPoin = row.poinKetidakhadiran + row.poinPelanggaran;
+      return row;
+    }).sort((a,b)=>a.rombel.nama.localeCompare(b.rombel.nama));
+    totalPoinAll = rowsData.reduce((s,r)=>s+r.totalPoin, 0);
+    colCount = 2 + (showAbsenCols?Math.max(kodeAbsenList.length,1)+2:0) + (showPelCols?1:0) + 1;
+    rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList, isPerClass:true, showAbsenCols, showPelCols, jenis};
+
+    headRow1Cells = '<th rowspan="2">No</th><th rowspan="2">Kelas</th>'+
+      (showAbsenCols?'<th colspan="'+Math.max(kodeAbsenList.length,1)+'">Ketidakhadiran per Kode</th><th rowspan="2">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Ketidakhadiran</th>':'')+
+      (showPelCols?'<th rowspan="2">Jumlah Pelanggaran</th>':'')+
+      '<th rowspan="2">Total Poin Pelanggaran</th>';
+    headRow2Html = showAbsenCols ? (kodeAbsenList.length ? kodeAbsenList.map(k=>'<th>'+k.kode+'</th>').join('') : '<th>-</th>') : '';
+
+    var bodyHtml = rowsData.length ? rowsData.map((r,i)=>{
+      return '<tr><td>'+(i+1)+'</td><td style="text-align:left;">'+r.rombel.nama+'</td>'+
+        (showAbsenCols ? (kodeAbsenList.length ? kodeAbsenList.map(k=>'<td>'+(r.counts[k.id]||0)+'</td>').join('') : '<td>-</td>')+'<td class="kpoint">'+r.jumlahKetidakhadiran+'</td><td class="kpoint">'+r.poinKetidakhadiran+'</td>' : '')+
+        (showPelCols ? '<td class="kpoint">'+r.jumlahPelanggaran+'</td>' : '')+
+        '<td class="kpoint">'+r.totalPoin+'</td>'+
+        '</tr>';
+    }).join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Belum ada rombel terdaftar</td></tr>';
+    var sumRowHtml = '';
+    if(rowsData.length){
+      const sumCounts = kodeAbsenList.map(k=>rowsData.reduce((s,r)=>s+(r.counts[k.id]||0),0));
+      const sumJumlahKetidakhadiran = rowsData.reduce((s,r)=>s+r.jumlahKetidakhadiran,0);
+      const sumPoinKetidakhadiran = rowsData.reduce((s,r)=>s+r.poinKetidakhadiran,0);
+      const sumJumlahPel = rowsData.reduce((s,r)=>s+r.jumlahPelanggaran,0);
+      sumRowHtml = '<tr><td colspan="2" style="text-align:right;font-weight:700;">Jumlah</td>'+
+        (showAbsenCols ? (kodeAbsenList.length ? sumCounts.map(v=>'<td style="font-weight:700;">'+v+'</td>').join('') : '<td></td>')+'<td class="kpoint">'+sumJumlahKetidakhadiran+'</td><td class="kpoint">'+sumPoinKetidakhadiran+'</td>' : '')+
+        (showPelCols ? '<td style="font-weight:700;">'+sumJumlahPel+'</td>' : '')+
+        '<td class="kpoint">'+totalPoinAll+'</td>'+
+        '</tr>';
+    }
+  } else {
+    /* Ringkasan per Siswa (personal / satu kelas): No, Nama, Ketidakhadiran per kode, Jumlah Ketidakhadiran,
+       Poin Ketidakhadiran, Poin Pelanggaran, Total Poin (poin ketidakhadiran + poin pelanggaran) */
+    const summary = {};
+    siswaList.forEach(s=>{ summary[s.id] = {siswa:s, counts:{}, poinAbsen:0, poinPelanggaran:0}; kodeAbsenList.forEach(k=>summary[s.id].counts[k.id]=0); });
+    absensi.forEach(a=>{
+      const row = summary[a.siswaId]; if(!row || row.counts[a.kodeAbsenId]===undefined) return;
+      row.counts[a.kodeAbsenId]++;
+      const k = kaMap[a.kodeAbsenId];
+      row.poinAbsen += k ? (k.poin||0) : 0;
+    });
+    pelanggaran.forEach(p=>{
+      const row = summary[p.siswaId]; if(!row) return;
+      row.poinPelanggaran += (p.poin||0);
+    });
+    rowsData = siswaList.map(s=>{
+      const row = summary[s.id];
+      row.jumlahKetidakhadiran = Object.values(row.counts).reduce((a,b)=>a+b,0);
+      return row;
+    });
+    totalPoinAll = rowsData.reduce((sum,r)=>sum + r.poinAbsen + r.poinPelanggaran, 0);
+    colCount = 2 + (showAbsenCols?Math.max(kodeAbsenList.length,1)+2:0) + (showPelCols?1:0) + 1;
+    rkMeta = {format:'ringkas', mode, kelasLabel, periodeLabel, waliInfo, kodeAbsenList, isPerClass:false, showAbsenCols, showPelCols, jenis};
+
+    headRow1Cells = '<th rowspan="2">No</th><th rowspan="2">Nama</th>'+
+      (showAbsenCols?'<th colspan="'+Math.max(kodeAbsenList.length,1)+'">Ketidakhadiran per Kode</th><th rowspan="2">Jumlah Ketidakhadiran</th><th rowspan="2">Poin Ketidakhadiran</th>':'')+
+      (showPelCols?'<th rowspan="2">Poin Pelanggaran</th>':'')+
+      '<th rowspan="2">Total Poin</th>';
+    headRow2Html = showAbsenCols ? (kodeAbsenList.length ? kodeAbsenList.map(k=>'<th>'+k.kode+'</th>').join('') : '<th>-</th>') : '';
+
+    var bodyHtml = rowsData.length ? rowsData.map((r,i)=>{
+      const total = r.poinAbsen + r.poinPelanggaran;
+      return '<tr><td>'+(i+1)+'</td><td style="text-align:left;">'+r.siswa.nama+'</td>'+
+        (showAbsenCols ? (kodeAbsenList.length ? kodeAbsenList.map(k=>'<td>'+(r.counts[k.id]||0)+'</td>').join('') : '<td>-</td>')+'<td class="kpoint">'+r.jumlahKetidakhadiran+'</td><td class="kpoint">'+r.poinAbsen+'</td>' : '')+
+        (showPelCols ? '<td class="kpoint">'+r.poinPelanggaran+'</td>' : '')+
+        '<td class="kpoint">'+total+'</td>'+
+        '</tr>';
+    }).join('') : '<tr class="empty-row"><td colspan="'+colCount+'">Belum ada siswa terdaftar</td></tr>';
+    var sumRowHtml = '';
+    if(rowsData.length){
+      const sumCounts = kodeAbsenList.map(k=>rowsData.reduce((s,r)=>s+(r.counts[k.id]||0),0));
+      const sumJumlahKetidakhadiran = rowsData.reduce((s,r)=>s+r.jumlahKetidakhadiran,0);
+      const sumPoinKetidakhadiran = rowsData.reduce((s,r)=>s+r.poinAbsen,0);
+      const sumPelanggaran = rowsData.reduce((s,r)=>s+r.poinPelanggaran,0);
+      sumRowHtml = '<tr><td colspan="2" style="text-align:right;font-weight:700;">Jumlah</td>'+
+        (showAbsenCols ? (kodeAbsenList.length ? sumCounts.map(v=>'<td style="font-weight:700;">'+v+'</td>').join('') : '<td></td>')+'<td class="kpoint">'+sumJumlahKetidakhadiran+'</td><td class="kpoint">'+sumPoinKetidakhadiran+'</td>' : '')+
+        (showPelCols ? '<td class="kpoint">'+sumPelanggaran+'</td>' : '')+
+        '<td class="kpoint">'+totalPoinAll+'</td>'+
+        '</tr>';
+    }
   }
+
+  let infoParts = ['<b>'+kelasLabel+'</b>', 'Periode: '+periodeLabel, (isPerClass ? 'Jumlah Kelas: <b>'+rowsData.length+'</b>' : 'Jumlah Siswa: <b>'+rowsData.length+'</b>')];
+  infoParts.push('Total Poin (Ketidakhadiran + Pelanggaran): <b>'+totalPoinAll+'</b>');
+  let html = '<div id="rk_wrap">';
+  html += '<p class="helptext" style="font-size:13px;margin:6px 0 14px;">'+infoParts.join(' &nbsp;•&nbsp; ')+'</p>';
+  html += '<table id="rk_table"><thead><tr>'+headRow1Cells+'</tr><tr>'+headRow2Html+'</tr></thead><tbody>';
+  html += bodyHtml + sumRowHtml;
   html += '</tbody></table>';
   html += buildTandaTanganHtml(waliInfo);
   html += '</div>';
@@ -2140,34 +2254,51 @@ function exportRekapExcel(){
   let merges = [];
   let colCount;
 
-  if(rkMeta.format==='ringkas'){
-    const kodeList = rkMeta.kodeAbsenList && rkMeta.kodeAbsenList.length ? rkMeta.kodeAbsenList : [{kode:'-'}];
-    const showRombelCol = !!rkMeta.showRombelCol;
-    colCount = 4 + kodeList.length + (showRombelCol?1:0);
-    const headerStartRow = aoa.length;
-    const headerRow1 = ['No','Nama', ...(showRombelCol?['Rombel']:[]), 'Jumlah Ketidakhadiran', ...kodeList.slice(1).map(()=>''), 'Poin Pelanggaran','Total Poin'];
-    const headerRow2 = ['','', ...(showRombelCol?['']:[]), ...kodeList.map(k=>k.kode), '', ''];
-    aoa.push(headerRow1, headerRow2);
-    const baseCol = showRombelCol ? 3 : 2;
-    merges.push(
-      {s:{r:headerStartRow,c:0}, e:{r:headerStartRow+1,c:0}},
-      {s:{r:headerStartRow,c:1}, e:{r:headerStartRow+1,c:1}},
-      ...(showRombelCol ? [{s:{r:headerStartRow,c:2}, e:{r:headerStartRow+1,c:2}}] : []),
-      {s:{r:headerStartRow,c:baseCol}, e:{r:headerStartRow,c:baseCol-1+kodeList.length}},
-      {s:{r:headerStartRow,c:baseCol+kodeList.length}, e:{r:headerStartRow+1,c:baseCol+kodeList.length}},
-      {s:{r:headerStartRow,c:baseCol+1+kodeList.length}, e:{r:headerStartRow+1,c:baseCol+1+kodeList.length}}
-    );
-    table.querySelectorAll('tbody tr').forEach(tr=>{
-      aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
+  const expandRow = (tr, rowIdx) => {
+    const cells = [];
+    let col = 0;
+    tr.querySelectorAll('td').forEach(td=>{
+      const colspan = parseInt(td.getAttribute('colspan')||'1',10);
+      cells.push(td.textContent);
+      for(let k=1;k<colspan;k++) cells.push('');
+      if(colspan>1) merges.push({s:{r:rowIdx,c:col}, e:{r:rowIdx,c:col+colspan-1}});
+      col += colspan;
     });
+    return cells;
+  };
+
+  const theadRows = table.querySelectorAll('thead tr');
+  if(theadRows.length>1){
+    const headerStartRow = aoa.length;
+    const row1ths = [...theadRows[0].querySelectorAll('th')];
+    const row2ths = [...theadRows[1].querySelectorAll('th')];
+    const headerRow1 = [], headerRow2 = [];
+    let col = 0, row2Idx = 0;
+    row1ths.forEach(th=>{
+      const colspan = parseInt(th.getAttribute('colspan')||'1',10);
+      const rowspan = parseInt(th.getAttribute('rowspan')||'1',10);
+      headerRow1[col] = th.textContent;
+      for(let k=1;k<colspan;k++) headerRow1[col+k]='';
+      if(rowspan===2){
+        merges.push({s:{r:headerStartRow,c:col}, e:{r:headerStartRow+1,c:col}});
+        headerRow2[col]='';
+      } else {
+        for(let k=0;k<colspan;k++){ headerRow2[col+k] = row2ths[row2Idx] ? row2ths[row2Idx].textContent : ''; row2Idx++; }
+        if(colspan>1) merges.push({s:{r:headerStartRow,c:col}, e:{r:headerStartRow,c:col+colspan-1}});
+      }
+      col += colspan;
+    });
+    colCount = col;
+    for(let c=0;c<colCount;c++){ if(headerRow1[c]===undefined) headerRow1[c]=''; if(headerRow2[c]===undefined) headerRow2[c]=''; }
+    aoa.push(headerRow1, headerRow2);
   } else {
-    const headerCells = [...table.querySelectorAll('thead tr')[0].querySelectorAll('th')].map(th=>th.textContent);
+    const headerCells = [...theadRows[0].querySelectorAll('th')].map(th=>th.textContent);
     colCount = headerCells.length;
     aoa.push(headerCells);
-    table.querySelectorAll('tbody tr').forEach(tr=>{
-      aoa.push([...tr.querySelectorAll('td')].map(td=>td.textContent));
-    });
   }
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    aoa.push(expandRow(tr, aoa.length));
+  });
 
   const tgl = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
   const namaWali = rkMeta.waliInfo ? rkMeta.waliInfo.nama : '..........................................';
